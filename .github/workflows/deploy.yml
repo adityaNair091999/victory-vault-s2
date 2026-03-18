@@ -18,14 +18,54 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy preview channel
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
-          # no channelId = Firebase creates a temporary preview channel per PR
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy preview channel
+        id: preview
+        run: |
+          OUTPUT=$(firebase hosting:channel:deploy pr-${{ github.event.pull_request.number }} \
+            --project ${{ secrets.FIREBASE_PROJECT_ID }} \
+            --expires 7d \
+            --json)
+          echo "$OUTPUT"
+          URL=$(echo "$OUTPUT" | jq -r '.result | to_entries[0].value.url')
+          echo "url=$URL" >> $GITHUB_OUTPUT
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Post preview URL as PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.preview.outputs.url }}';
+            const body = `🔥 **Firebase preview deployed**\n\n${url}\n\n_Preview expires in 7 days. Updated on every push to this PR._`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes('Firebase preview deployed'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
 
   # Production deploy — runs on merge to main
   production:
@@ -36,11 +76,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to production
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
-          channelId: live
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy to production
+        run: firebase deploy --only hosting --project ${{ secrets.FIREBASE_PROJECT_ID }}
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
