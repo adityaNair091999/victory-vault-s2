@@ -1108,6 +1108,7 @@ body {
 
 .timeline-content {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 12px;
     flex: 1;
@@ -1115,6 +1116,10 @@ body {
     background: rgba(239, 68, 68, 0.04);
     border-radius: var(--radius-sm);
     border: 1px solid rgba(239, 68, 68, 0.08);
+}
+
+.timeline-tiebreaker-chain {
+    flex-basis: 100%;  /* force the chain onto its own line below the score row */
 }
 
 .timeline-gw {
@@ -1137,14 +1142,35 @@ body {
     color: var(--red-light);
 }
 
-.timeline-tiebreaker {
+.timeline-tiebreaker-chain {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 4px;
+}
+
+.tb-step {
     font-size: 0.75rem;
-    color: var(--text-secondary);
-    background: rgba(255, 200, 0, 0.1);
-    border: 1px solid rgba(255, 200, 0, 0.3);
     border-radius: 4px;
     padding: 2px 8px;
-    white-space: nowrap;
+}
+
+.tb-eliminated {
+    color: var(--red-light);
+    background: rgba(220, 50, 50, 0.08);
+    border: 1px solid rgba(220, 50, 50, 0.25);
+}
+
+.tb-tied {
+    color: var(--text-secondary);
+    background: rgba(255, 200, 0, 0.08);
+    border: 1px solid rgba(255, 200, 0, 0.25);
+}
+
+.tb-unavailable {
+    color: var(--text-secondary);
+    background: rgba(150, 150, 150, 0.08);
+    border: 1px solid rgba(150, 150, 150, 0.25);
 }
 
 .lms-unresolved-ties {

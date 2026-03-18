@@ -178,6 +178,10 @@ const COMPETITIONS = (() => {
                     // Each step looks only at the minimum within stillTied.
                     // ──────────────────────────────────────────────────────────
 
+                    // Each evaluated tiebreaker step is recorded here so the UI
+                    // can show the full chain, not just the deciding step.
+                    const tiebreakerSteps = [];
+
                     // Step 1: captain points (lower captain pts → eliminated).
                     const captainPtsMap = {};
                     for (const id of lowestPlayers) {
@@ -193,8 +197,7 @@ const COMPETITIONS = (() => {
                         const captainSurv = lowestPlayers.filter(id => captainPtsMap[id] > minCaptain);
 
                         if (captainSurv.length > 0) {
-                            // At least one player has strictly higher captain pts → everyone
-                            // at the minimum is out (could be one or several).
+                            // Captain pts resolved it — record the decisive step and stop.
                             for (const id of captainElim) {
                                 eliminations.push({
                                     gw,
@@ -203,22 +206,35 @@ const COMPETITIONS = (() => {
                                     entryName: playerMap[id].entryName,
                                     score: lowest,
                                     tiebreaker: {
-                                        type: 'captain',
-                                        eliminatedPts: captainPtsMap[id],
-                                        survivors: captainSurv.map(s => ({
-                                            playerName: playerMap[s].playerName,
-                                            pts: captainPtsMap[s],
-                                        })),
+                                        steps: [{
+                                            type: 'captain',
+                                            outcome: 'eliminated',
+                                            eliminatedPts: captainPtsMap[id],
+                                            survivors: captainSurv.map(s => ({
+                                                playerName: playerMap[s].playerName,
+                                                pts: captainPtsMap[s],
+                                            })),
+                                        }],
                                     },
                                 });
                                 alivePlayers.delete(id);
                             }
                             resolved = true;
+                        } else {
+                            // All tied on captain pts — record as inconclusive and fall through.
+                            tiebreakerSteps.push({
+                                type: 'captain',
+                                outcome: 'tied',
+                                allPts: minCaptain,
+                            });
                         }
-                        // else: all tied on captain pts → fall through to step 2.
+                    } else {
+                        // Captain data missing — record and fall through to step 2.
+                        tiebreakerSteps.push({
+                            type: 'captain',
+                            outcome: 'unavailable',
+                        });
                     }
-                    // If captain data was unavailable for any player, skip step 1
-                    // entirely and fall through to step 2 (season total).
 
                     if (!resolved) {
                         // Step 2: season total (lower season total → eliminated).
@@ -235,12 +251,20 @@ const COMPETITIONS = (() => {
                                     entryName: playerMap[id].entryName,
                                     score: lowest,
                                     tiebreaker: {
-                                        type: 'season_total',
-                                        eliminatedPts: playerMap[id].total,
-                                        survivors: seasonSurv.map(s => ({
-                                            playerName: playerMap[s].playerName,
-                                            pts: playerMap[s].total,
-                                        })),
+                                        // Prepend the inconclusive captain step so the full
+                                        // chain is visible in the UI.
+                                        steps: [
+                                            ...tiebreakerSteps,
+                                            {
+                                                type: 'season_total',
+                                                outcome: 'eliminated',
+                                                eliminatedPts: playerMap[id].total,
+                                                survivors: seasonSurv.map(s => ({
+                                                    playerName: playerMap[s].playerName,
+                                                    pts: playerMap[s].total,
+                                                })),
+                                            },
+                                        ],
                                     },
                                 });
                                 alivePlayers.delete(id);

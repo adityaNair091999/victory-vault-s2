@@ -916,12 +916,19 @@ const APP = (() => {
                     <div class="timeline">
                         ${half.eliminations.map((e, i) => {
                             let tbHtml = '';
-                            if (e.tiebreaker) {
-                                const survStr = e.tiebreaker.survivors.map(s => `${s.playerName} (${s.pts})`).join(', ');
-                                const label = e.tiebreaker.type === 'captain'
-                                    ? `Captain tiebreaker: ${e.tiebreaker.eliminatedPts} pts vs ${survStr}`
-                                    : `Season total tiebreaker: ${e.tiebreaker.eliminatedPts} pts vs ${survStr}`;
-                                tbHtml = `<span class="timeline-tiebreaker">⚖️ ${label}</span>`;
+                            if (e.tiebreaker && e.tiebreaker.steps) {
+                                const stepLines = e.tiebreaker.steps.map(step => {
+                                    const label = step.type === 'captain' ? 'Captain pts' : 'Season total';
+                                    if (step.outcome === 'eliminated') {
+                                        const survStr = step.survivors.map(s => `${s.playerName} (${s.pts})`).join(', ');
+                                        return `<span class="tb-step tb-eliminated">❌ ${label}: ${step.eliminatedPts} pts — eliminated (vs ${survStr})</span>`;
+                                    } else if (step.outcome === 'tied') {
+                                        return `<span class="tb-step tb-tied">✅ ${label}: tied (${step.allPts} pts each — no decision)</span>`;
+                                    } else {
+                                        return `<span class="tb-step tb-unavailable">⚠️ ${label}: data unavailable — skipped</span>`;
+                                    }
+                                }).join('');
+                                tbHtml = `<div class="timeline-tiebreaker-chain">${stepLines}</div>`;
                             }
                             return `
                         <div class="timeline-item">
