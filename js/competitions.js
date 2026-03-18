@@ -97,28 +97,58 @@ const COMPETITIONS = (() => {
     // --------------------------------------------------------
     // 3. LAST MAN STANDING
     // --------------------------------------------------------
-    function computeLastManStanding(data) {
+    // getEntryPicksFn and getLiveDataFn are injected so this module stays
+    // decoupled from the API layer but can still fetch captain data on demand.
+    async function computeLastManStanding(data, getEntryPicksFn, getLiveDataFn) {
         const lastFinished = data.lastFinishedGW;
         const halves = [];
 
+        // Cache live element-points maps by GW to avoid duplicate fetches.
+        const liveCache = {};
+
+        // Returns the points scored by entryId's captain in the given GW,
+        // or null if the data cannot be determined.
+        async function getCaptainPoints(entryId, gw) {
+            try {
+                const picks = await getEntryPicksFn(entryId, gw);
+                if (!picks || !picks.picks) return null;
+                const captainPick = picks.picks.find(p => p.is_captain);
+                if (!captainPick) return null;
+
+                if (!liveCache[gw]) {
+                    const live = await getLiveDataFn(gw);
+                    const elemMap = {};
+                    if (live && live.elements) {
+                        for (const el of live.elements) {
+                            elemMap[el.id] = el.stats.total_points;
+                        }
+                    }
+                    liveCache[gw] = elemMap;
+                }
+
+                const pts = liveCache[gw][captainPick.element];
+                return pts !== undefined ? pts : null;
+            } catch {
+                return null;
+            }
+        }
+
         for (const [key, cfg] of Object.entries(CONFIG.LMS)) {
             const eliminations = [];
+            const unresolvedTies = [];
             const alivePlayers = new Set(data.players.map(p => p.entry));
             const playerMap = {};
-            data.players.forEach(p => {
-                playerMap[p.entry] = p;
-            });
+            data.players.forEach(p => { playerMap[p.entry] = p; });
 
             for (let gw = cfg.start; gw <= Math.min(cfg.end, lastFinished); gw++) {
                 if (alivePlayers.size <= 1) break;
 
-                // Find lowest scorer among alive players
+                // Find lowest scorer(s) among alive players.
                 let lowest = Infinity;
                 let lowestPlayers = [];
 
                 for (const entryId of alivePlayers) {
-                    const p = playerMap[entryId];
-                    const score = getNetScore(p.gwHistory[gw]);
+                    const score = getNetScore(playerMap[entryId].gwHistory[gw]);
                     if (score < lowest) {
                         lowest = score;
                         lowestPlayers = [entryId];
@@ -127,33 +157,113 @@ const COMPETITIONS = (() => {
                     }
                 }
 
-                // Eliminate the lowest scorer(s)
-                // If ties, eliminate all tied at lowest
-                const eliminated = lowestPlayers.length > 0 ? [lowestPlayers[0]] : [];
-                // In case of tie, eliminate the one with lower overall rank
-                if (lowestPlayers.length > 1) {
-                    // Sort by total points (lowest eliminated first), then by rank
-                    lowestPlayers.sort((a, b) => {
-                        const pa = playerMap[a];
-                        const pb = playerMap[b];
-                        const totalA = pa.gwHistory[gw] ? pa.gwHistory[gw].totalPoints : pa.total;
-                        const totalB = pb.gwHistory[gw] ? pb.gwHistory[gw].totalPoints : pb.total;
-                        return totalA - totalB; // lower total gets eliminated
-                    });
-                    eliminated[0] = lowestPlayers[0];
-                }
-
-                if (eliminated.length > 0) {
-                    const eliminatedEntry = eliminated[0];
-                    const player = playerMap[eliminatedEntry];
+                if (lowestPlayers.length === 1) {
+                    // No tie — straightforward elimination.
+                    const id = lowestPlayers[0];
                     eliminations.push({
                         gw,
-                        entry: eliminatedEntry,
-                        playerName: player.playerName,
-                        entryName: player.entryName,
+                        entry: id,
+                        playerName: playerMap[id].playerName,
+                        entryName: playerMap[id].entryName,
                         score: lowest,
+                        tiebreaker: null,
                     });
-                    alivePlayers.delete(eliminatedEntry);
+                    alivePlayers.delete(id);
+                } else {
+                    // ── Tiebreaker chain ───────────────────────────────────────
+                    // stillTied: the group we haven't resolved yet (starts as all
+                    // players tied at lowest GW score, shrinks if a step only
+                    // partially resolves — e.g. 5-way tie → 2 eliminated by
+                    // captain pts, 3 survive without needing further resolution).
+                    // Each step looks only at the minimum within stillTied.
+                    // ──────────────────────────────────────────────────────────
+
+                    // Step 1: captain points (lower captain pts → eliminated).
+                    const captainPtsMap = {};
+                    for (const id of lowestPlayers) {
+                        captainPtsMap[id] = await getCaptainPoints(id, gw);
+                    }
+
+                    const captainAvailable = lowestPlayers.every(id => captainPtsMap[id] !== null);
+                    let resolved = false;
+
+                    if (captainAvailable) {
+                        const minCaptain = Math.min(...lowestPlayers.map(id => captainPtsMap[id]));
+                        const captainElim = lowestPlayers.filter(id => captainPtsMap[id] === minCaptain);
+                        const captainSurv = lowestPlayers.filter(id => captainPtsMap[id] > minCaptain);
+
+                        if (captainSurv.length > 0) {
+                            // At least one player has strictly higher captain pts → everyone
+                            // at the minimum is out (could be one or several).
+                            for (const id of captainElim) {
+                                eliminations.push({
+                                    gw,
+                                    entry: id,
+                                    playerName: playerMap[id].playerName,
+                                    entryName: playerMap[id].entryName,
+                                    score: lowest,
+                                    tiebreaker: {
+                                        type: 'captain',
+                                        eliminatedPts: captainPtsMap[id],
+                                        survivors: captainSurv.map(s => ({
+                                            playerName: playerMap[s].playerName,
+                                            pts: captainPtsMap[s],
+                                        })),
+                                    },
+                                });
+                                alivePlayers.delete(id);
+                            }
+                            resolved = true;
+                        }
+                        // else: all tied on captain pts → fall through to step 2.
+                    }
+                    // If captain data was unavailable for any player, skip step 1
+                    // entirely and fall through to step 2 (season total).
+
+                    if (!resolved) {
+                        // Step 2: season total (lower season total → eliminated).
+                        const minSeason = Math.min(...lowestPlayers.map(id => playerMap[id].total));
+                        const seasonElim = lowestPlayers.filter(id => playerMap[id].total === minSeason);
+                        const seasonSurv = lowestPlayers.filter(id => playerMap[id].total > minSeason);
+
+                        if (seasonSurv.length > 0) {
+                            for (const id of seasonElim) {
+                                eliminations.push({
+                                    gw,
+                                    entry: id,
+                                    playerName: playerMap[id].playerName,
+                                    entryName: playerMap[id].entryName,
+                                    score: lowest,
+                                    tiebreaker: {
+                                        type: 'season_total',
+                                        eliminatedPts: playerMap[id].total,
+                                        survivors: seasonSurv.map(s => ({
+                                            playerName: playerMap[s].playerName,
+                                            pts: playerMap[s].total,
+                                        })),
+                                    },
+                                });
+                                alivePlayers.delete(id);
+                            }
+                            resolved = true;
+                        }
+                    }
+
+                    if (!resolved) {
+                        // Step 3: unresolved — surface for manual review.
+                        unresolvedTies.push({
+                            gw,
+                            score: lowest,
+                            captainDataAvailable: captainAvailable,
+                            players: lowestPlayers.map(id => ({
+                                entry: id,
+                                playerName: playerMap[id].playerName,
+                                entryName: playerMap[id].entryName,
+                                captainPts: captainPtsMap[id] ?? null,
+                                seasonTotal: playerMap[id].total,
+                            })),
+                        });
+                    }
                 }
             }
 
@@ -171,6 +281,7 @@ const COMPETITIONS = (() => {
                 startGW: cfg.start,
                 endGW: cfg.end,
                 eliminations,
+                unresolvedTies,
                 alive,
                 isComplete,
                 winner: isComplete && alive.length === 1 ? alive[0] : null,

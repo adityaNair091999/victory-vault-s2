@@ -55,7 +55,7 @@ const APP = (() => {
             statusEl.textContent = 'Computing competitions...';
             computed.standings = COMPETITIONS.computeSeasonStandings(appData);
             computed.monthly = COMPETITIONS.computeMonthlyPrize(appData);
-            computed.lms = COMPETITIONS.computeLastManStanding(appData);
+            computed.lms = await COMPETITIONS.computeLastManStanding(appData, FPL_API.getEntryPicks, FPL_API.getLiveData);
             computed.freeHit = COMPETITIONS.computeFreeHitChip(appData);
             computed.cup = COMPETITIONS.computeFPLCup(appData);
             computed.highestGW = COMPETITIONS.computeHighestGWScore(appData);
@@ -884,20 +884,56 @@ const APP = (() => {
                 </div>`;
             }
 
+            // Unresolved ties — needs manual resolution
+            if (half.unresolvedTies && half.unresolvedTies.length > 0) {
+                html += `<div class="lms-unresolved-ties">`;
+                for (const tie of half.unresolvedTies) {
+                    const playerList = tie.players.map(p => {
+                        const parts = [p.playerName];
+                        if (tie.captainDataAvailable) parts.push(`captain: ${p.captainPts} pts`);
+                        parts.push(`season: ${p.seasonTotal} pts`);
+                        return `${parts[0]} (${parts.slice(1).join(', ')})`;
+                    }).join(' · ');
+                    const reason = !tie.captainDataAvailable
+                        ? 'Captain data unavailable — all tiebreakers exhausted.'
+                        : 'All tiebreakers exhausted (GW pts, captain pts, season total all equal).';
+                    html += `
+                    <div class="lms-tie-warning">
+                        <span class="tie-warning-icon">⚠️</span>
+                        <div class="tie-warning-body">
+                            <strong>GW${tie.gw} — Manual resolution needed</strong>
+                            <span>${playerList} — all scored ${tie.score} pts. ${reason}</span>
+                        </div>
+                    </div>`;
+                }
+                html += `</div>`;
+            }
+
             // Elimination timeline
             if (half.eliminations.length > 0) {
                 html += `<div class="lms-timeline">
                     <h4>💀 Elimination Timeline</h4>
                     <div class="timeline">
-                        ${half.eliminations.map((e, i) => `
+                        ${half.eliminations.map((e, i) => {
+                            let tbHtml = '';
+                            if (e.tiebreaker) {
+                                const survStr = e.tiebreaker.survivors.map(s => `${s.playerName} (${s.pts})`).join(', ');
+                                const label = e.tiebreaker.type === 'captain'
+                                    ? `Captain tiebreaker: ${e.tiebreaker.eliminatedPts} pts vs ${survStr}`
+                                    : `Season total tiebreaker: ${e.tiebreaker.eliminatedPts} pts vs ${survStr}`;
+                                tbHtml = `<span class="timeline-tiebreaker">⚖️ ${label}</span>`;
+                            }
+                            return `
                         <div class="timeline-item">
                             <div class="timeline-marker">${i + 1}</div>
                             <div class="timeline-content">
                                 <span class="timeline-gw">GW${e.gw}</span>
                                 <span class="timeline-name">${e.playerName} <span style="opacity:0.55;font-size:0.85em">(${e.entryName})</span></span>
                                 <span class="timeline-score">${e.score} pts</span>
+                                ${tbHtml}
                             </div>
-                        </div>`).join('')}
+                        </div>`;
+                        }).join('')}
                     </div>
                 </div>`;
             }

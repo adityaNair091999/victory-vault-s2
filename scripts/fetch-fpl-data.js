@@ -94,7 +94,7 @@ async function main() {
 
     // 6. GW picks for all finished gameweeks
     if (finishedGWs.length > 0) {
-        console.log(`\n[6/6] GW picks (${entries.length} entries × ${finishedGWs.length} GWs)`);
+        console.log(`\n[6/7] GW picks (${entries.length} entries × ${finishedGWs.length} GWs)`);
         const picksTasks = [];
         for (const id of entries) {
             for (const gw of finishedGWs) {
@@ -110,7 +110,22 @@ async function main() {
         }
         await runBatched(picksTasks, 3);
     } else {
-        console.log('\n[6/6] GW picks — skipped (no finished GWs yet)');
+        console.log('\n[6/7] GW picks — skipped (no finished GWs yet)');
+    }
+
+    // 7. Live event data for all finished GWs (needed for captain-points tiebreaker in LMS)
+    if (finishedGWs.length > 0) {
+        console.log(`\n[7/7] Live event data (${finishedGWs.length} GWs)`);
+        await runBatched(finishedGWs.map(gw => async () => {
+            try {
+                const data = await fetchJson(`${API_BASE}/event/${gw}/live/`);
+                save(`event-${gw}-live.json`, data);
+            } catch (err) {
+                console.warn(`    WARN: live data missing for GW ${gw} — ${err.message}`);
+            }
+        }), 3);
+    } else {
+        console.log('\n[7/7] Live event data — skipped (no finished GWs yet)');
     }
 
     console.log('\nAll data saved to data/\n');

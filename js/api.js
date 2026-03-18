@@ -39,6 +39,9 @@ const FPL_API = (() => {
         const picksMatch = tail.match(/^entry\/(\d+)\/event\/(\d+)\/picks\/$/);
         if (picksMatch) return `./data/entry-${picksMatch[1]}-gw-${picksMatch[2]}-picks.json`;
 
+        const liveMatch = tail.match(/^event\/(\d+)\/live\/$/);
+        if (liveMatch) return `./data/event-${liveMatch[1]}-live.json`;
+
         return null;
     }
 
@@ -88,6 +91,10 @@ const FPL_API = (() => {
         } catch {
             return null;
         }
+    }
+
+    async function getLiveData(gw) {
+        return fetchJSON(`${CONFIG.API_BASE}/event/${gw}/live/`);
     }
 
     async function getEntryTransfers(entryId) {
@@ -218,5 +225,6 @@ const FPL_API = (() => {
         getEntryPicks,
         getEntryCup,
         getEntryTransfers,
+        getLiveData,
     };
 })();
