@@ -26,6 +26,9 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
+      - name: Fetch FPL data
+        run: node scripts/fetch-fpl-data.js
+
       - name: Deploy preview channel
         id: preview
         run: |
@@ -83,6 +86,9 @@ jobs:
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
+
+      - name: Fetch FPL data
+        run: node scripts/fetch-fpl-data.js
 
       - name: Deploy to production
         run: firebase deploy --only hosting --project ${{ secrets.FIREBASE_PROJECT_ID }}

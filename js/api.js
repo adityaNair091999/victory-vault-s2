@@ -1,48 +1,19 @@
 // ============================================================
 // Victory Vault Season 2 — FPL API Data Layer
+// All requests proxied via Cloudflare Worker to bypass CORS.
 // ============================================================
 
 const FPL_API = (() => {
     const cache = {};
     const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-    // Maps an FPL API URL to its pre-fetched static data file path.
-    // GitHub Actions populates the data/ directory on a schedule so GitHub
-    // Pages can serve the files without any CORS proxy.
-    function urlToDataPath(url) {
-        const base = CONFIG.API_BASE + '/';
-        if (!url.startsWith(base)) return null;
-        const tail = url.slice(base.length);
+    // Cloudflare Worker CORS proxy — proxies all FPL API requests
+    const PROXY_BASE = 'https://fpl-proxy.get-fpl.workers.dev/api';
 
-        if (tail === 'bootstrap-static/') {
-            return './data/bootstrap.json';
-        }
-
-        const standingsBase = `leagues-classic/${CONFIG.LEAGUE_ID}/standings/`;
-        if (tail === standingsBase) {
-            return './data/league-standings.json';
-        }
-        const phaseMatch = tail.match(new RegExp(`^leagues-classic/${CONFIG.LEAGUE_ID}/standings/\\?phase=(\\d+)$`));
-        if (phaseMatch) {
-            return `./data/league-phase-${phaseMatch[1]}.json`;
-        }
-
-        const historyMatch = tail.match(/^entry\/(\d+)\/history\/$/);
-        if (historyMatch) return `./data/entry-${historyMatch[1]}-history.json`;
-
-        const cupMatch = tail.match(/^entry\/(\d+)\/cup\/$/);
-        if (cupMatch) return `./data/entry-${cupMatch[1]}-cup.json`;
-
-        const transfersMatch = tail.match(/^entry\/(\d+)\/transfers\/$/);
-        if (transfersMatch) return `./data/entry-${transfersMatch[1]}-transfers.json`;
-
-        const picksMatch = tail.match(/^entry\/(\d+)\/event\/(\d+)\/picks\/$/);
-        if (picksMatch) return `./data/entry-${picksMatch[1]}-gw-${picksMatch[2]}-picks.json`;
-
-        const liveMatch = tail.match(/^event\/(\d+)\/live\/$/);
-        if (liveMatch) return `./data/event-${liveMatch[1]}-live.json`;
-
-        return null;
+    function toProxyUrl(url) {
+        const base = CONFIG.API_BASE;
+        if (!url.startsWith(base)) return url;
+        return PROXY_BASE + url.slice(base.length);
     }
 
     async function fetchJSON(url) {
@@ -51,9 +22,7 @@ const FPL_API = (() => {
             return cache[url].data;
         }
 
-        const dataPath = urlToDataPath(url);
-        const fetchUrl = dataPath !== null ? dataPath : url;
-
+        const fetchUrl = toProxyUrl(url);
         const resp = await fetch(fetchUrl);
         if (!resp.ok) throw new Error(`Failed to load ${fetchUrl}: ${resp.status}`);
         const data = await resp.json();
