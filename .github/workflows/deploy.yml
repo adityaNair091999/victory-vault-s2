@@ -34,6 +34,7 @@ jobs:
         run: |
           OUTPUT=$(firebase hosting:channel:deploy pr-${{ github.event.pull_request.number }} \
             --project ${{ secrets.FIREBASE_PROJECT_ID }} \
+            --site victory-vault-s2 \
             --expires 7d \
             --json)
           echo "$OUTPUT"
@@ -91,6 +92,6 @@ jobs:
         run: node scripts/fetch-fpl-data.js
 
       - name: Deploy to production
-        run: firebase deploy --only hosting --project ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: firebase deploy --only hosting:victory-vault-s2 --project ${{ secrets.FIREBASE_PROJECT_ID }}
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

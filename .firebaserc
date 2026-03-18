@@ -1,5 +1,12 @@
 {
   "projects": {
     "default": "victory-vault-s2-8505c"
+  },
+  "targets": {
+    "victory-vault-s2-8505c": {
+      "hosting": {
+        "victory-vault-s2": ["victory-vault-s2"]
+      }
+    }
   }
 }
