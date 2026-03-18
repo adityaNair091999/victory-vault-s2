@@ -917,6 +917,7 @@ const APP = (() => {
                         ${half.eliminations.map((e, i) => {
                             let tbHtml = '';
                             if (e.tiebreaker && e.tiebreaker.steps) {
+                                console.log('[LMS debug] elimination:', e.playerName, 'GW', e.gw, 'steps:', JSON.stringify(e.tiebreaker.steps));
                                 const stepLines = e.tiebreaker.steps.map(step => {
                                     const label = step.type === 'captain' ? 'Captain pts' : 'Season total';
                                     if (step.outcome === 'eliminated') {
