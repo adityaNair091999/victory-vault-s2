@@ -111,9 +111,9 @@ const COMPETITIONS = (() => {
         async function getCaptainPoints(entryId, gw) {
             try {
                 const picks = await getEntryPicksFn(entryId, gw);
-                if (!picks || !picks.picks) return null;
+                if (!picks || !picks.picks) { console.log(`[captain debug] entry ${entryId} GW${gw}: no picks`); return null; }
                 const captainPick = picks.picks.find(p => p.is_captain);
-                if (!captainPick) return null;
+                if (!captainPick) { console.log(`[captain debug] entry ${entryId} GW${gw}: no captain pick found`); return null; }
 
                 if (!liveCache[gw]) {
                     const live = await getLiveDataFn(gw);
@@ -127,8 +127,10 @@ const COMPETITIONS = (() => {
                 }
 
                 const pts = liveCache[gw][captainPick.element];
+                console.log(`[captain debug] entry ${entryId} GW${gw}: captain element ${captainPick.element}, pts=${pts}`);
                 return pts !== undefined ? pts : null;
-            } catch {
+            } catch (err) {
+                console.log(`[captain debug] entry ${entryId} GW${gw}: caught error — ${err.message}`);
                 return null;
             }
         }
