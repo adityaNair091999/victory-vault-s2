@@ -1118,10 +1118,6 @@ body {
     border: 1px solid rgba(239, 68, 68, 0.08);
 }
 
-.timeline-tiebreaker-chain {
-    flex-basis: 100%;  /* force the chain onto its own line below the score row */
-}
-
 .timeline-gw {
     font-weight: 700;
     font-size: 0.78rem;
@@ -1143,6 +1139,7 @@ body {
 }
 
 .timeline-tiebreaker-chain {
+    flex-basis: 100%;   /* push onto its own line inside the wrapping flex row */
     display: flex;
     flex-direction: column;
     gap: 3px;
