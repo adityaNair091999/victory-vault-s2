@@ -92,6 +92,6 @@ jobs:
         run: node scripts/fetch-fpl-data.js
 
       - name: Deploy to production
-        run: firebase deploy --only hosting --site victory-vault-s2 --project ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: firebase deploy --only hosting --project ${{ secrets.FIREBASE_PROJECT_ID }}
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

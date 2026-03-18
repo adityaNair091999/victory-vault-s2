@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "victory-vault-s2",
     "public": ".",
     "ignore": [
       "firebase.json",
