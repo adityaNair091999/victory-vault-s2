@@ -6,17 +6,53 @@ const FPL_API = (() => {
     const cache = {};
     const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-    // CORS proxy — self-hosted Netlify function to avoid FPL API blocks
-    const CORS_PROXY = '/.netlify/functions/fpl-proxy?url=';
+    // Maps an FPL API URL to its pre-fetched static data file path.
+    // GitHub Actions populates the data/ directory on a schedule so GitHub
+    // Pages can serve the files without any CORS proxy.
+    function urlToDataPath(url) {
+        const base = CONFIG.API_BASE + '/';
+        if (!url.startsWith(base)) return null;
+        const tail = url.slice(base.length);
+
+        if (tail === 'bootstrap-static/') {
+            return './data/bootstrap.json';
+        }
+
+        const standingsBase = `leagues-classic/${CONFIG.LEAGUE_ID}/standings/`;
+        if (tail === standingsBase) {
+            return './data/league-standings.json';
+        }
+        const phaseMatch = tail.match(new RegExp(`^leagues-classic/${CONFIG.LEAGUE_ID}/standings/\\?phase=(\\d+)$`));
+        if (phaseMatch) {
+            return `./data/league-phase-${phaseMatch[1]}.json`;
+        }
+
+        const historyMatch = tail.match(/^entry\/(\d+)\/history\/$/);
+        if (historyMatch) return `./data/entry-${historyMatch[1]}-history.json`;
+
+        const cupMatch = tail.match(/^entry\/(\d+)\/cup\/$/);
+        if (cupMatch) return `./data/entry-${cupMatch[1]}-cup.json`;
+
+        const transfersMatch = tail.match(/^entry\/(\d+)\/transfers\/$/);
+        if (transfersMatch) return `./data/entry-${transfersMatch[1]}-transfers.json`;
+
+        const picksMatch = tail.match(/^entry\/(\d+)\/event\/(\d+)\/picks\/$/);
+        if (picksMatch) return `./data/entry-${picksMatch[1]}-gw-${picksMatch[2]}-picks.json`;
+
+        return null;
+    }
 
     async function fetchJSON(url) {
         const now = Date.now();
         if (cache[url] && (now - cache[url].time < CACHE_TTL)) {
             return cache[url].data;
         }
-        const proxiedUrl = CORS_PROXY + encodeURIComponent(url);
-        const resp = await fetch(proxiedUrl);
-        if (!resp.ok) throw new Error(`API error: ${resp.status} for ${url}`);
+
+        const dataPath = urlToDataPath(url);
+        const fetchUrl = dataPath !== null ? dataPath : url;
+
+        const resp = await fetch(fetchUrl);
+        if (!resp.ok) throw new Error(`Failed to load ${fetchUrl}: ${resp.status}`);
         const data = await resp.json();
         cache[url] = { data, time: now };
         return data;
