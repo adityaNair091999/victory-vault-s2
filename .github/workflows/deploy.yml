@@ -1,41 +1,46 @@
-name: Deploy to GitHub Pages
+name: Deploy to Firebase Hosting
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Only one deployment at a time; don't cancel in-progress runs.
-concurrency:
-  group: pages
-  cancel-in-progress: false
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
-  deploy:
+  # Preview channel deploy — runs on every PR
+  preview:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pull-requests: write  # needed to post the preview URL comment
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v4
+      - name: Deploy preview channel
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          enablement: true
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          # no channelId = Firebase creates a temporary preview channel per PR
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v3
+  # Production deploy — runs on merge to main
+  production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to production
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          path: '.'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          channelId: live
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
