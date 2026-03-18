@@ -1,0 +1,15 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Local notes / scratch files
+discrepancy_notes.txt
+audit_discrepancies.js
+
+# Large/binary files that don't belong in git
+*.pdf
+*.png
