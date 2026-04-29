@@ -373,57 +373,44 @@ const COMPETITIONS = (() => {
     // 5. FPL CUP
     // --------------------------------------------------------
     function computeFPLCup(data) {
-        // The cup data comes from each entry's cup endpoint
-        // We'll collect all cup matches
-        const allMatches = [];
-        const playerMap = {};
-        data.players.forEach(p => { playerMap[p.entry] = p; });
-
-        for (const p of data.players) {
-            if (p.cupData && p.cupData.cup_matches) {
-                for (const match of p.cupData.cup_matches) {
-                    allMatches.push({
-                        event: match.event,
-                        entry1: match.entry_1_entry,
-                        entry1Name: match.entry_1_name,
-                        entry1PlayerName: match.entry_1_player_name,
-                        entry1Points: match.entry_1_points,
-                        entry2: match.entry_2_entry,
-                        entry2Name: match.entry_2_name,
-                        entry2PlayerName: match.entry_2_player_name,
-                        entry2Points: match.entry_2_points,
-                        winner: match.winner,
-                        isKnockout: match.is_knockout,
-                        isActive: !match.winner,
-                    });
-                }
-            }
-        }
-
-        // Deduplicate matches (same match seen from both sides)
-        const uniqueMatches = [];
-        const seen = new Set();
-        for (const m of allMatches) {
-            const key = `${m.event}-${Math.min(m.entry1, m.entry2)}-${Math.max(m.entry1, m.entry2)}`;
-            if (!seen.has(key)) {
-                seen.add(key);
-                uniqueMatches.push(m);
-            }
-        }
-
-        // Group by round (event)
-        const rounds = {};
-        for (const m of uniqueMatches) {
-            if (!rounds[m.event]) rounds[m.event] = [];
-            rounds[m.event].push(m);
-        }
-
-        // Check if league has cup
         const hasCup = data.league && data.league.league && data.league.league.has_cup;
+        const rawMatches = data.cupMatches || [];
+
+        // Map to a consistent shape
+        const allMatches = rawMatches.map(m => ({
+            event: m.event,
+            entry1: m.entry_1_entry,
+            entry1Name: m.entry_1_name,
+            entry1PlayerName: m.entry_1_player_name,
+            entry1Points: m.entry_1_points,
+            entry2: m.entry_2_entry,
+            entry2Name: m.entry_2_name,
+            entry2PlayerName: m.entry_2_player_name,
+            entry2Points: m.entry_2_points,
+            winner: m.winner,
+            isBye: m.is_bye,
+            isActive: !m.winner,
+            knockoutName: m.knockout_name,
+        }));
+
+        // Group by round (knockout_name), sorted by GW event order
+        const roundMap = {};
+        for (const m of allMatches) {
+            const key = m.knockoutName;
+            if (!roundMap[key]) roundMap[key] = { event: m.event, label: m.knockoutName, matches: [], byes: [] };
+            if (m.isBye) {
+                roundMap[key].byes.push(m);
+            } else {
+                roundMap[key].matches.push(m);
+            }
+        }
+
+        // Sort rounds by GW event
+        const rounds = Object.values(roundMap).sort((a, b) => a.event - b.event);
 
         return {
             hasCup,
-            matches: uniqueMatches,
+            matches: allMatches,
             rounds,
             prize: CONFIG.PRIZES.CUP,
         };
