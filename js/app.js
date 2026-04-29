@@ -226,7 +226,7 @@ const APP = (() => {
             </div>
             <div class="card-body">
                 <div class="mini-stat">
-                    <span class="mini-value">${computed.cup.hasCup ? (Object.keys(computed.cup.rounds).length > 0 ? Object.keys(computed.cup.rounds).length + ' rounds played' : 'Starting soon (~GW34-35)') : 'Cup not yet created'}</span>
+                    <span class="mini-value">${computed.cup.hasCup ? (computed.cup.rounds.length > 0 ? computed.cup.rounds.length + ' round(s) played' : 'Starting soon (~GW34-35)') : 'Cup not yet created'}</span>
                     <span class="mini-detail">$${CONFIG.PRIZES.CUP} for the winner</span>
                 </div>
             </div>
@@ -1032,10 +1032,10 @@ const APP = (() => {
         let html = `
         <div class="section-header">
             <h2>FPL Cup — $${CONFIG.PRIZES.CUP}</h2>
-            <p class="section-sub">Straight knockout competition, typically starts around GW34-35</p>
+            <p class="section-sub">Straight knockout competition · Winner takes $${CONFIG.PRIZES.CUP}</p>
         </div>`;
 
-        if (!cup.hasCup || Object.keys(cup.rounds).length === 0) {
+        if (!cup.hasCup || cup.rounds.length === 0) {
             html += `
             <div class="empty-state-large">
                 <span class="empty-icon-large">🏅</span>
@@ -1044,32 +1044,125 @@ const APP = (() => {
                 <p>The winner receives <strong>$${CONFIG.PRIZES.CUP}</strong></p>
             </div>`;
         } else {
-            const sortedRounds = Object.keys(cup.rounds).sort((a, b) => a - b);
-            for (const gw of sortedRounds) {
-                const matches = cup.rounds[gw];
+            // Summary bar — current stage, GW, players remaining, prize
+            const latestRound = cup.rounds[cup.rounds.length - 1];
+            const eliminated = cup.matches.filter(m => !m.isBye && m.winner).length;
+            const playersLeft = appData.players.length - eliminated;
+
+            html += `
+            <div class="cup-summary-bar">
+                <div class="cup-summary-item">
+                    <span class="cup-summary-label">Current Stage</span>
+                    <span class="cup-summary-value">${latestRound.label}</span>
+                </div>
+                <div class="cup-summary-item">
+                    <span class="cup-summary-label">Gameweek</span>
+                    <span class="cup-summary-value">${latestRound.event}</span>
+                </div>
+                <div class="cup-summary-item">
+                    <span class="cup-summary-label">Players Left</span>
+                    <span class="cup-summary-value">${playersLeft} / ${appData.players.length}</span>
+                </div>
+                <div class="cup-summary-item">
+                    <span class="cup-summary-label">Prize</span>
+                    <span class="cup-summary-value cup-prize-value">$${CONFIG.PRIZES.CUP}</span>
+                </div>
+            </div>`;
+
+            for (const round of cup.rounds) {
+                const hasRealMatches = round.matches.length > 0;
+                const byeCount = round.byes.length;
+                const roundComplete = round.matches.every(m => m.winner);
+                const roundPending = round.matches.every(m => !m.winner);
+
                 html += `
                 <div class="cup-round">
-                    <h3 class="round-header">Gameweek ${gw}</h3>
-                    <div class="cup-matches">`;
-
-                for (const m of matches) {
-                    const e1Win = m.winner === m.entry1;
-                    const e2Win = m.winner === m.entry2;
-                    html += `
-                    <div class="cup-match">
-                        <div class="cup-team ${e1Win ? 'winner' : (e2Win ? 'loser' : '')}">
-                            <span class="cup-team-name">${m.entry1PlayerName || m.entry1Name}</span>
-                            <span class="cup-team-score">${m.entry1Points}</span>
+                    <div class="cup-round-banner">
+                        <div class="cup-round-title">
+                            <span class="cup-round-icon">🏅</span>
+                            <h3>${round.label}</h3>
                         </div>
-                        <div class="cup-vs">VS</div>
-                        <div class="cup-team ${e2Win ? 'winner' : (e1Win ? 'loser' : '')}">
-                            <span class="cup-team-name">${m.entry2PlayerName || m.entry2Name}</span>
-                            <span class="cup-team-score">${m.entry2Points}</span>
+                        <div class="cup-round-badges">
+                            <span class="cup-round-gw-badge">GW${round.event}</span>
+                            ${roundComplete ? '<span class="cup-stage-badge complete">Complete</span>' : roundPending ? '<span class="cup-stage-badge upcoming">Upcoming</span>' : '<span class="cup-stage-badge live">In Progress</span>'}
+                        </div>
+                    </div>`;
+
+                if (byeCount > 0) {
+                    html += `
+                    <div class="cup-byes-section">
+                        <span class="cup-byes-label">Byes (${byeCount})</span>
+                        <div class="cup-bye-chips">
+                            ${round.byes.map(b => `<span class="cup-bye-chip">${b.entry1PlayerName || b.entry1Name}</span>`).join('')}
                         </div>
                     </div>`;
                 }
 
-                html += `</div></div>`;
+                if (hasRealMatches) {
+                    html += `<div class="cup-matches">`;
+                    for (const m of round.matches) {
+                        const e1Win = m.winner === m.entry1;
+                        const e2Win = m.winner === m.entry2;
+                        const pending = !m.winner;
+                        const initials = name => name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                        const e1Name = m.entry1PlayerName || m.entry1Name;
+                        const e2Name = m.entry2PlayerName || m.entry2Name;
+
+                        if (pending) {
+                            html += `
+                            <div class="cup-match cup-match-pending">
+                                <div class="cup-team">
+                                    <div class="cup-team-avatar">${initials(e1Name)}</div>
+                                    <div class="cup-team-info">
+                                        <span class="cup-manager-name">${e1Name}</span>
+                                        <span class="cup-team-label">${m.entry1Name}</span>
+                                    </div>
+                                </div>
+                                <div class="cup-divider">
+                                    <span class="cup-gw-upcoming">GW${m.event}</span>
+                                    <span class="cup-vs-label">VS</span>
+                                </div>
+                                <div class="cup-team">
+                                    <div class="cup-team-avatar">${initials(e2Name)}</div>
+                                    <div class="cup-team-info">
+                                        <span class="cup-manager-name">${e2Name}</span>
+                                        <span class="cup-team-label">${m.entry2Name}</span>
+                                    </div>
+                                </div>
+                            </div>`;
+                        } else {
+                            html += `
+                            <div class="cup-match">
+                                <div class="cup-team ${e1Win ? 'winner' : 'loser'}">
+                                    <div class="cup-team-info">
+                                        <span class="cup-manager-name">${e1Name}</span>
+                                        <span class="cup-team-label">${m.entry1Name}</span>
+                                    </div>
+                                    <div class="cup-team-right">
+                                        ${e1Win ? '<span class="cup-win-badge">WIN</span>' : '<span class="cup-loss-badge">OUT</span>'}
+                                        <span class="cup-score">${m.entry1Points}</span>
+                                    </div>
+                                </div>
+                                <div class="cup-divider">
+                                    <span class="cup-vs-label">VS</span>
+                                </div>
+                                <div class="cup-team ${e2Win ? 'winner' : 'loser'}">
+                                    <div class="cup-team-info">
+                                        <span class="cup-manager-name">${e2Name}</span>
+                                        <span class="cup-team-label">${m.entry2Name}</span>
+                                    </div>
+                                    <div class="cup-team-right">
+                                        ${e2Win ? '<span class="cup-win-badge">WIN</span>' : '<span class="cup-loss-badge">OUT</span>'}
+                                        <span class="cup-score">${m.entry2Points}</span>
+                                    </div>
+                                </div>
+                            </div>`;
+                        }
+                    }
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
             }
         }
 

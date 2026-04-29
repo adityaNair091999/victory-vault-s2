@@ -54,11 +54,12 @@ const FPL_API = (() => {
         return fetchJSON(`${CONFIG.API_BASE}/entry/${entryId}/event/${gw}/picks/`);
     }
 
-    async function getEntryCup(entryId) {
+    async function getCupMatches(cupLeagueId) {
         try {
-            return await fetchJSON(`${CONFIG.API_BASE}/entry/${entryId}/cup/`);
+            const data = await fetchJSON(`${CONFIG.API_BASE}/leagues-h2h-matches/league/${cupLeagueId}/`);
+            return data && data.results ? data.results : [];
         } catch {
-            return null;
+            return [];
         }
     }
 
@@ -79,7 +80,7 @@ const FPL_API = (() => {
         const result = {
             bootstrap: null,
             league: null,
-            players: [],       // { entry, player_name, entry_name, total, rank, history, chips, cupData }
+            players: [],       // { entry, player_name, entry_name, total, rank, history, chips }
             currentGW: 1,
             lastFinishedGW: 0,
             allTransfers: [],
@@ -114,10 +115,10 @@ const FPL_API = (() => {
         const historyPromises = entries.map(e => getEntryHistory(e.entry));
         const histories = await Promise.all(historyPromises);
 
-        // Step 4: Fetch cup data for all entries
+        // Step 4: Fetch cup match data via h2h-matches endpoint
         if (progressCallback) progressCallback('Loading cup data...');
-        const cupPromises = entries.map(e => getEntryCup(e.entry));
-        const cupResults = await Promise.all(cupPromises);
+        const cupLeagueId = result.league && result.league.league && result.league.league.cup_league;
+        result.cupMatches = cupLeagueId ? await getCupMatches(cupLeagueId) : [];
 
         // Step 5: Fetch phase standings for monthly prizes
         if (progressCallback) progressCallback('Loading monthly standings...');
@@ -177,7 +178,6 @@ const FPL_API = (() => {
                 eventTotal: e.event_total,
                 gwHistory,
                 chips,
-                cupData: cupResults[i],
             });
         }
 
@@ -192,7 +192,7 @@ const FPL_API = (() => {
         getLeaguePhaseStandings,
         getEntryHistory,
         getEntryPicks,
-        getEntryCup,
+        getCupMatches,
         getEntryTransfers,
         getLiveData,
     };

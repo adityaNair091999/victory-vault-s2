@@ -34,7 +34,6 @@ jobs:
         run: |
           OUTPUT=$(firebase hosting:channel:deploy pr-${{ github.event.pull_request.number }} \
             --project ${{ secrets.FIREBASE_PROJECT_ID }} \
-            --site victory-vault-s2 \
             --expires 7d \
             --json)
           echo "$OUTPUT"
