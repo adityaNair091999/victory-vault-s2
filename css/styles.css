@@ -2168,6 +2168,272 @@ body {
     }
 }
 
+/* ============================================================
+   Winners Tab
+   ============================================================ */
+
+.winners-hero {
+    background: linear-gradient(135deg, #0f1923 0%, #1a1f2e 50%, #1c1508 100%);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: var(--radius-xl);
+    padding: 40px 32px;
+    text-align: center;
+    margin-bottom: 28px;
+    box-shadow: 0 0 48px rgba(245, 158, 11, 0.07);
+}
+
+.winners-hero-title {
+    font-family: var(--font-display);
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--gold-light);
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+}
+
+.winners-hero-sub {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.03em;
+}
+
+/* ── Podium ── */
+.winners-podium {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr 1fr;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 8px;
+}
+
+.podium-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px 16px 20px;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.podium-item:hover {
+    transform: translateY(-2px);
+}
+
+.podium-gold {
+    background: linear-gradient(160deg, #1c1a0e, #1a1f2e);
+    border-color: var(--gold);
+    box-shadow: 0 0 28px rgba(245, 158, 11, 0.18), var(--shadow-md);
+    padding-top: 32px;
+    padding-bottom: 28px;
+}
+
+.podium-silver {
+    border-color: #94a3b8;
+    box-shadow: 0 0 16px rgba(148, 163, 184, 0.08);
+}
+
+.podium-bronze {
+    border-color: #b87333;
+    box-shadow: 0 0 16px rgba(184, 115, 51, 0.08);
+}
+
+.podium-medal {
+    font-size: 2.4rem;
+    margin-bottom: 10px;
+    line-height: 1;
+}
+
+.podium-gold .podium-medal {
+    font-size: 3rem;
+}
+
+.podium-name {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.podium-gold .podium-name {
+    font-size: 1.15rem;
+}
+
+.podium-team {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.podium-points {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.podium-prize {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--gold-light);
+    margin-bottom: 4px;
+}
+
+.podium-silver .podium-prize {
+    color: #94a3b8;
+}
+
+.podium-bronze .podium-prize {
+    color: #b87333;
+}
+
+.podium-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+}
+
+/* ── Section divider ── */
+.winners-section-header {
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    margin: 32px 0 16px;
+}
+
+/* ── Competition cards grid ── */
+.winners-comps-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.comp-winner-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+
+.comp-winner-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.comp-winner-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+}
+
+.comp-winner-icon {
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.comp-winner-title {
+    flex: 1;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.comp-winner-prize {
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--green-light);
+    white-space: nowrap;
+}
+
+.comp-winner-body {
+    padding: 14px 16px;
+}
+
+.comp-winner-name {
+    font-family: var(--font-display);
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 3px;
+}
+
+.comp-winner-team {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+}
+
+.comp-winner-pending {
+    color: var(--text-muted);
+    font-style: italic;
+    font-weight: 400;
+}
+
+/* ── Prize badge (monthly table) ── */
+.prize-badge {
+    display: inline-block;
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--green-light);
+    border: 1px solid rgba(16, 185, 129, 0.22);
+    border-radius: var(--radius-pill);
+    padding: 2px 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+}
+
+/* ── Prize tags (pot table) ── */
+.prize-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.prize-tag {
+    display: inline-block;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    padding: 2px 7px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.prize-total {
+    color: var(--gold-light);
+    font-size: 1.05rem;
+}
+
+@media (max-width: 768px) {
+    .winners-podium {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .winners-comps-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .winners-hero-title {
+        font-size: 1.6rem;
+    }
+}
+
 @media (max-width: 480px) {
     .brand-icon {
         width: 40px;

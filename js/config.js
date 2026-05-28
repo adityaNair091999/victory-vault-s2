@@ -57,5 +57,6 @@ const CONFIG = {
         { id: 'cup', label: 'FPL Cup', icon: '🏅' },
         { id: 'highestgw', label: 'Highest GW', icon: '⚡' },
         { id: 'transfers', label: 'Transfers', icon: '🔄' },
+        { id: 'winners', label: 'Season Winners', icon: '🎉' },
     ],
 };

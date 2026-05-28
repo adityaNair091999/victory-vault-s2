@@ -118,6 +118,7 @@ const APP = (() => {
             case 'cup': renderCup(content); break;
             case 'highestgw': renderHighestGW(content); break;
             case 'transfers': renderTransfers(content); break;
+            case 'winners': renderWinners(content); break;
         }
     }
 
@@ -1404,6 +1405,272 @@ const APP = (() => {
         }
         html += '</div>';
         return html;
+    }
+
+    // --------------------------------------------------------
+    // SEASON WINNERS TAB
+    // --------------------------------------------------------
+    function renderWinners(container) {
+        const s = computed.standings;
+        const m = computed.monthly;
+        const l = computed.lms;
+        const f = computed.freeHit;
+        const cup = computed.cup;
+        const h = computed.highestGW;
+
+        // Extract cup winner from the last completed round's final match
+        function getCupWinner() {
+            if (!cup.hasCup || cup.rounds.length === 0) return null;
+            const lastRound = cup.rounds[cup.rounds.length - 1];
+            const done = lastRound.matches.filter(mx => mx.winner);
+            if (done.length === 0) return null;
+            const fm = done[0];
+            const id = fm.winner;
+            return {
+                entry: id,
+                playerName: id === fm.entry1 ? (fm.entry1PlayerName || fm.entry1Name) : (fm.entry2PlayerName || fm.entry2Name),
+                entryName: id === fm.entry1 ? fm.entry1Name : fm.entry2Name,
+            };
+        }
+
+        // Aggregate prize winnings per player across all competitions
+        function buildPrizePot() {
+            const pot = {};
+            function add(entry, playerName, entryName, label, amount) {
+                if (!pot[entry]) pot[entry] = { playerName, entryName, items: [], total: 0 };
+                pot[entry].items.push({ label, amount });
+                pot[entry].total += amount;
+            }
+
+            for (const p of s) {
+                if (p.prize > 0) add(p.entry, p.playerName, p.entryName, `Season #${p.rank}`, p.prize);
+            }
+            for (const mo of m) {
+                if (mo.isComplete && mo.winners.length > 0) {
+                    for (const w of mo.winners) {
+                        add(w.entry, w.playerName, w.entryName, mo.month, mo.prizePerWinner);
+                    }
+                }
+            }
+            for (const half of l) {
+                if (half.winner) {
+                    add(half.winner.entry, half.winner.playerName, half.winner.entryName,
+                        half.key === 'HALF1' ? 'LMS H1' : 'LMS H2', half.prize);
+                }
+            }
+            for (const [key, half] of Object.entries(f.halves)) {
+                if (half.isComplete && half.winners.length > 0) {
+                    for (const w of half.winners) {
+                        add(w.entry, w.playerName, w.entryName,
+                            key === 'HALF1' ? 'Free Hit H1' : 'Free Hit H2', half.prizePerWinner);
+                    }
+                }
+            }
+            const cw = getCupWinner();
+            if (cw) add(cw.entry, cw.playerName, cw.entryName, 'FPL Cup', cup.prize);
+            if (h.winners.length > 0) {
+                for (const w of h.winners) {
+                    add(w.entry, w.playerName, w.entryName, 'Highest GW', h.prizePerWinner);
+                }
+            }
+            return Object.values(pot).sort((a, b) => b.total - a.total);
+        }
+
+        const cupWinner = getCupWinner();
+        const prizePot = buildPrizePot();
+        const totalPool =
+            CONFIG.PRIZES.SEASON[1] + CONFIG.PRIZES.SEASON[2] + CONFIG.PRIZES.SEASON[3] +
+            Object.keys(CONFIG.MONTHLY_GWS).length * CONFIG.PRIZES.MONTHLY +
+            2 * CONFIG.PRIZES.LMS +
+            2 * CONFIG.PRIZES.FREE_HIT +
+            CONFIG.PRIZES.CUP +
+            CONFIG.PRIZES.HIGHEST_GW;
+
+        const fmt = n => Number.isInteger(n) ? n : n.toFixed(0);
+
+        let html = '';
+
+        // ── Hero banner ──
+        html += `
+        <div class="winners-hero">
+            <div class="winners-hero-title">Season 2 Champions</div>
+            <div class="winners-hero-sub">Victory Vault · 2024/25 FPL Season · Total Prize Pool: $${totalPool}</div>
+        </div>`;
+
+        // ── Season podium — rendered silver | gold | bronze ──
+        const podiumSlots = [
+            { si: 1, cls: 'podium-silver', medal: '🥈', label: '2nd Place' },
+            { si: 0, cls: 'podium-gold',   medal: '🥇', label: '1st Place' },
+            { si: 2, cls: 'podium-bronze', medal: '🥉', label: '3rd Place' },
+        ];
+
+        html += `<div class="winners-podium">`;
+        for (const slot of podiumSlots) {
+            const p = s[slot.si];
+            if (!p) continue;
+            html += `
+            <div class="podium-item ${slot.cls}">
+                <div class="podium-medal">${slot.medal}</div>
+                <div class="podium-name">${p.playerName}</div>
+                <div class="podium-team">${p.entryName}</div>
+                <div class="podium-points">${p.total} pts</div>
+                <div class="podium-prize">$${p.prize}</div>
+                <div class="podium-label">${slot.label}</div>
+            </div>`;
+        }
+        html += `</div>`;
+
+        // ── Monthly prize winners ──
+        html += `<div class="winners-section-header">Monthly Prize Winners</div>`;
+        html += `<div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Winner</th>
+                    <th>Team</th>
+                    <th>Score</th>
+                    <th>Prize</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        for (const mo of m) {
+            if (mo.isComplete && mo.winners.length > 0) {
+                html += `
+                <tr class="winner-row">
+                    <td><strong>${mo.month}</strong></td>
+                    <td>${mo.winners.map(w => w.playerName).join(', ')}</td>
+                    <td style="color:var(--text-muted)">${mo.winners.map(w => w.entryName).join(', ')}</td>
+                    <td>${mo.winners[0].total} pts</td>
+                    <td><span class="prize-badge">$${fmt(mo.prizePerWinner)}</span></td>
+                </tr>`;
+            } else if (mo.isStarted) {
+                html += `
+                <tr>
+                    <td><strong>${mo.month}</strong></td>
+                    <td colspan="3" style="color:var(--text-muted)">In progress — ${mo.playerScores[0]?.playerName || '—'} leading</td>
+                    <td style="color:var(--text-muted)">$${mo.prize}</td>
+                </tr>`;
+            } else {
+                html += `
+                <tr>
+                    <td><strong>${mo.month}</strong></td>
+                    <td colspan="3" style="color:var(--text-muted)">Not started</td>
+                    <td style="color:var(--text-muted)">$${mo.prize}</td>
+                </tr>`;
+            }
+        }
+        html += `</tbody></table></div>`;
+
+        // ── Knockout / other competitions ──
+        html += `<div class="winners-section-header">Knockout &amp; Chip Competitions</div>`;
+        html += `<div class="winners-comps-grid">`;
+
+        for (const half of l) {
+            const label = half.key === 'HALF1' ? '1st Half (GW2–18)' : '2nd Half (GW20–38)';
+            html += `
+            <div class="comp-winner-card">
+                <div class="comp-winner-header">
+                    <span class="comp-winner-icon">💀</span>
+                    <span class="comp-winner-title">Last Man Standing · ${label}</span>
+                    <span class="comp-winner-prize">$${half.prize}</span>
+                </div>
+                <div class="comp-winner-body">
+                    ${half.winner
+                        ? `<div class="comp-winner-name">${half.winner.playerName}</div>
+                           <div class="comp-winner-team">${half.winner.entryName}</div>`
+                        : `<div class="comp-winner-name comp-winner-pending">${half.alive.length} player${half.alive.length !== 1 ? 's' : ''} still alive</div>`
+                    }
+                </div>
+            </div>`;
+        }
+
+        for (const [key, half] of Object.entries(f.halves)) {
+            html += `
+            <div class="comp-winner-card">
+                <div class="comp-winner-header">
+                    <span class="comp-winner-icon">🎯</span>
+                    <span class="comp-winner-title">Free Hit · ${half.label}</span>
+                    <span class="comp-winner-prize">$${half.prize}</span>
+                </div>
+                <div class="comp-winner-body">
+                    ${half.isComplete && half.winners.length > 0
+                        ? `<div class="comp-winner-name">${half.winners.map(w => w.playerName).join(', ')}</div>
+                           <div class="comp-winner-team">${half.winners[0].entryName} · GW${half.winners[0].gw} · ${half.bestScore} pts</div>`
+                        : half.usages.length === 0
+                            ? `<div class="comp-winner-name comp-winner-pending">No Free Hit used</div>`
+                            : `<div class="comp-winner-name comp-winner-pending">In progress</div>`
+                    }
+                </div>
+            </div>`;
+        }
+
+        html += `
+        <div class="comp-winner-card">
+            <div class="comp-winner-header">
+                <span class="comp-winner-icon">🏅</span>
+                <span class="comp-winner-title">FPL Cup</span>
+                <span class="comp-winner-prize">$${cup.prize}</span>
+            </div>
+            <div class="comp-winner-body">
+                ${cupWinner
+                    ? `<div class="comp-winner-name">${cupWinner.playerName}</div>
+                       <div class="comp-winner-team">${cupWinner.entryName}</div>`
+                    : `<div class="comp-winner-name comp-winner-pending">${cup.hasCup ? 'In progress' : 'Cup not started'}</div>`
+                }
+            </div>
+        </div>
+
+        <div class="comp-winner-card">
+            <div class="comp-winner-header">
+                <span class="comp-winner-icon">⚡</span>
+                <span class="comp-winner-title">Highest GW Score</span>
+                <span class="comp-winner-prize">$${h.prize}</span>
+            </div>
+            <div class="comp-winner-body">
+                ${h.winners.length > 0
+                    ? `<div class="comp-winner-name">${h.winners.map(w => w.playerName).join(', ')}</div>
+                       <div class="comp-winner-team">${h.winners[0].entryName} · GW${h.winners[0].gw} · ${h.bestScore} pts</div>`
+                    : `<div class="comp-winner-name comp-winner-pending">Not decided</div>`
+                }
+            </div>
+        </div>`;
+
+        html += `</div>`; // end winners-comps-grid
+
+        // ── Prize pot leaderboard ──
+        html += `<div class="winners-section-header">Total Prize Earnings</div>`;
+        html += `<div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th class="col-rank">#</th>
+                    <th>Manager</th>
+                    <th>Team</th>
+                    <th>Prizes</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        prizePot.forEach((p, i) => {
+            html += `
+            <tr${i === 0 ? ' class="winner-row"' : ''}>
+                <td class="col-rank"><span class="rank-badge ${i === 0 ? 'gold' : ''}">${i + 1}</span></td>
+                <td><strong>${p.playerName}</strong></td>
+                <td style="color:var(--text-muted)">${p.entryName}</td>
+                <td>
+                    <div class="prize-tags">
+                        ${p.items.map(item => `<span class="prize-tag">$${fmt(item.amount)} ${item.label}</span>`).join('')}
+                    </div>
+                </td>
+                <td><strong class="prize-total">$${fmt(p.total)}</strong></td>
+            </tr>`;
+        });
+
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
     }
 
     // --------------------------------------------------------
