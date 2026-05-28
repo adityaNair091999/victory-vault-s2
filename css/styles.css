@@ -377,19 +377,56 @@ body {
 .tab-nav {
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: stretch;
+    position: relative;
 }
 
 .tab-nav-inner {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 16px;
+    flex: 1;
+    min-width: 0;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    padding: 0 4px;
 }
 
 .tab-nav-inner::-webkit-scrollbar {
     display: none;
+}
+
+.tab-scroll-btn {
+    flex-shrink: 0;
+    width: 36px;
+    background: var(--bg-secondary);
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+.tab-scroll-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+}
+
+.tab-scroll-left {
+    border-right: 1px solid var(--border);
+}
+
+.tab-scroll-right {
+    border-left: 1px solid var(--border);
+}
+
+.tab-scroll-btn.hidden {
+    visibility: hidden;
+    pointer-events: none;
 }
 
 .tab-bar {

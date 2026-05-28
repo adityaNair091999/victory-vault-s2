@@ -26,6 +26,34 @@ const APP = (() => {
             btn.addEventListener('click', () => switchTab(tab.id));
             tabBar.appendChild(btn);
         }
+        setupTabScrollArrows();
+    }
+
+    function setupTabScrollArrows() {
+        const inner = document.getElementById('tab-nav-inner');
+        const btnLeft = document.getElementById('tab-scroll-left');
+        const btnRight = document.getElementById('tab-scroll-right');
+        if (!inner || !btnLeft || !btnRight) return;
+
+        const SCROLL_AMOUNT = 200;
+
+        function updateArrows() {
+            btnLeft.classList.toggle('hidden', inner.scrollLeft <= 0);
+            btnRight.classList.toggle('hidden', inner.scrollLeft + inner.clientWidth >= inner.scrollWidth - 1);
+        }
+
+        btnLeft.addEventListener('click', () => {
+            inner.scrollBy({ left: -SCROLL_AMOUNT, behavior: 'smooth' });
+        });
+        btnRight.addEventListener('click', () => {
+            inner.scrollBy({ left: SCROLL_AMOUNT, behavior: 'smooth' });
+        });
+
+        inner.addEventListener('scroll', updateArrows, { passive: true });
+        window.addEventListener('resize', updateArrows, { passive: true });
+
+        // Initial state
+        updateArrows();
     }
 
     function switchTab(tabId) {
