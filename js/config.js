@@ -47,6 +47,7 @@ const CONFIG = {
 
     // Tab definitions
     TABS: [
+        { id: 'winners', label: 'Season Winners', icon: '🎉' },
         { id: 'overview', label: 'Overview', icon: '🏠' },
         { id: 'gameweek', label: 'This GW', icon: '📋' },
         { id: 'standings', label: 'Standings', icon: '🏆' },
