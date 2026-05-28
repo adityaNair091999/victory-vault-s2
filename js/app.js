@@ -5,7 +5,7 @@
 const APP = (() => {
     let appData = null;
     let computed = {};
-    let activeTab = 'overview';
+    let activeTab = 'winners';
 
     // --------------------------------------------------------
     // INITIALIZATION

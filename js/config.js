@@ -47,6 +47,7 @@ const CONFIG = {
 
     // Tab definitions
     TABS: [
+        { id: 'winners', label: 'Season Winners', icon: '🎉' },
         { id: 'overview', label: 'Overview', icon: '🏠' },
         { id: 'gameweek', label: 'This GW', icon: '📋' },
         { id: 'standings', label: 'Standings', icon: '🏆' },
@@ -57,6 +58,5 @@ const CONFIG = {
         { id: 'cup', label: 'FPL Cup', icon: '🏅' },
         { id: 'highestgw', label: 'Highest GW', icon: '⚡' },
         { id: 'transfers', label: 'Transfers', icon: '🔄' },
-        { id: 'winners', label: 'Season Winners', icon: '🎉' },
     ],
 };
