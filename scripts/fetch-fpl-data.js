@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const LEAGUE_ID = 1249203;
+const LEAGUE_ID = 306358;
 const API_BASE = 'https://fantasy.premierleague.com/api';
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const PHASE_IDS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];

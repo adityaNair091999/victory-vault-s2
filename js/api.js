@@ -1,5 +1,5 @@
 // ============================================================
-// Victory Vault Season 2 — FPL API Data Layer
+// Victory Vault Season 3 — FPL API Data Layer
 // All requests proxied via Cloudflare Worker to bypass CORS.
 // ============================================================
 
