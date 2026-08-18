@@ -6,6 +6,7 @@ const APP = (() => {
     let appData = null;
     let computed = {};
     let activeTab = 'winners';
+    let defaultTabSet = false;
 
     // --------------------------------------------------------
     // INITIALIZATION
@@ -112,6 +113,19 @@ const APP = (() => {
                 }
             } else if (gwLiveEl) {
                 gwLiveEl.remove();
+            }
+
+            // Land on Overview while the season is in progress; only default to
+            // Winners once the season is actually complete. Only applies to the
+            // initial load — doesn't override a tab the user has already picked.
+            if (!defaultTabSet) {
+                defaultTabSet = true;
+                const totalGWs = (appData.bootstrap.events || []).length || 38;
+                const seasonComplete = appData.lastFinishedGW >= totalGWs;
+                activeTab = seasonComplete ? 'winners' : 'overview';
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.toggle('active', b.dataset.tab === activeTab);
+                });
             }
 
             renderActiveTab();
@@ -1520,13 +1534,22 @@ const APP = (() => {
 
         const fmt = n => Number.isInteger(n) ? n : n.toFixed(0);
 
+        const totalGWs = (appData.bootstrap.events || []).length || 38;
+        const seasonComplete = appData.lastFinishedGW >= totalGWs;
+
         let html = '';
 
         // ── Hero banner ──
-        html += `
+        html += seasonComplete
+            ? `
         <div class="winners-hero">
             <div class="winners-hero-title">Season 3 Champions</div>
             <div class="winners-hero-sub">Victory Vault · 2026/27 FPL Season · Total Prize Pool: $${totalPool}</div>
+        </div>`
+            : `
+        <div class="winners-hero">
+            <div class="winners-hero-title">Season 3 — In Progress</div>
+            <div class="winners-hero-sub">Victory Vault · 2026/27 FPL Season · GW${appData.lastFinishedGW} of ${totalGWs} complete · Total Prize Pool: $${totalPool}</div>
         </div>`;
 
         // ── Season podium — rendered silver | gold | bronze ──
