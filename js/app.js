@@ -1526,7 +1526,7 @@ const APP = (() => {
         html += `
         <div class="winners-hero">
             <div class="winners-hero-title">Season 3 Champions</div>
-            <div class="winners-hero-sub">Victory Vault · 2024/25 FPL Season · Total Prize Pool: $${totalPool}</div>
+            <div class="winners-hero-sub">Victory Vault · 2026/27 FPL Season · Total Prize Pool: $${totalPool}</div>
         </div>`;
 
         // ── Season podium — rendered silver | gold | bronze ──
