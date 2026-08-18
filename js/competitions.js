@@ -1,5 +1,5 @@
 // ============================================================
-// Victory Vault Season 2 — Competition Logic
+// Victory Vault Season 3 — Competition Logic
 // ============================================================
 
 const COMPETITIONS = (() => {

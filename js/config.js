@@ -1,9 +1,9 @@
 // ============================================================
-// Victory Vault Season 2 — Configuration
+// Victory Vault Season 3 — Configuration
 // ============================================================
 
 const CONFIG = {
-    LEAGUE_ID: 1249203,
+    LEAGUE_ID: 306358,
 
     // FPL API Base
     API_BASE: 'https://fantasy.premierleague.com/api',
@@ -33,16 +33,16 @@ const CONFIG = {
     // Monthly GW mapping (from FPL API phases)
     // phaseId corresponds to the FPL API ?phase= parameter
     MONTHLY_GWS: {
-        'August': { gws: [1, 2, 3], prize: 30, phaseId: 2 },
-        'September': { gws: [4, 5, 6], prize: 30, phaseId: 3 },
-        'October': { gws: [7, 8, 9], prize: 30, phaseId: 4 },
-        'November': { gws: [10, 11, 12, 13], prize: 30, phaseId: 5 },
-        'December': { gws: [14, 15, 16, 17, 18, 19], prize: 30, phaseId: 6 },
-        'January': { gws: [20, 21, 22, 23, 24], prize: 30, phaseId: 7 },
-        'February': { gws: [25, 26, 27, 28], prize: 30, phaseId: 8 },
-        'March': { gws: [29, 30, 31], prize: 30, phaseId: 9 },
-        'April': { gws: [32, 33, 34], prize: 30, phaseId: 10 },
-        'May': { gws: [35, 36, 37, 38], prize: 30, phaseId: 11 },
+        'August': { gws: [1, 2], prize: 30, phaseId: 2 },
+        'September': { gws: [3, 4, 5], prize: 30, phaseId: 3 },
+        'October': { gws: [6, 7, 8, 9], prize: 30, phaseId: 4 },
+        'November': { gws: [10, 11, 12], prize: 30, phaseId: 5 },
+        'December': { gws: [13, 14, 15, 16, 17, 18], prize: 30, phaseId: 6 },
+        'January': { gws: [19, 20, 21, 22, 23], prize: 30, phaseId: 7 },
+        'February': { gws: [24, 25, 26, 27], prize: 30, phaseId: 8 },
+        'March': { gws: [28, 29, 30], prize: 30, phaseId: 9 },
+        'April': { gws: [31, 32, 33], prize: 30, phaseId: 10 },
+        'May': { gws: [34, 35, 36, 37, 38], prize: 30, phaseId: 11 },
     },
 
     // Tab definitions

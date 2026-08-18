@@ -1,5 +1,5 @@
 // ============================================================
-// Victory Vault Season 2 — Main Application Controller
+// Victory Vault Season 3 — Main Application Controller
 // ============================================================
 
 const APP = (() => {
@@ -94,6 +94,10 @@ const APP = (() => {
                 `Last updated: ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
 
             document.getElementById('current-gw').textContent = `GW ${appData.currentGW}`;
+
+            const playerCount = appData.players.length;
+            document.getElementById('players-pill').textContent = `${playerCount} Players`;
+            document.getElementById('footer-brand').textContent = `Victory Vault Season 3 · ${playerCount} Players`;
 
             // Show LIVE indicator if current GW is in progress
             const currentEvent = (appData.bootstrap.events || []).find(e => e.id === appData.currentGW);
@@ -1521,7 +1525,7 @@ const APP = (() => {
         // ── Hero banner ──
         html += `
         <div class="winners-hero">
-            <div class="winners-hero-title">Season 2 Champions</div>
+            <div class="winners-hero-title">Season 3 Champions</div>
             <div class="winners-hero-sub">Victory Vault · 2024/25 FPL Season · Total Prize Pool: $${totalPool}</div>
         </div>`;
 
