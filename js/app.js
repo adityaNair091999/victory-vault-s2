@@ -337,17 +337,26 @@ const APP = (() => {
         const displayEvent = (appData.bootstrap.events || []).find(e => e.id === displayGW);
         const isLive = displayEvent && !displayEvent.finished;
 
+        // While the current GW is in progress, the per-entry history endpoint
+        // still reports 0 points — the live provisional score only appears as
+        // `event_total` on the league standings. Prefer that for the GW-points
+        // column so the tab isn't all zeros mid-round. (Bench/transfer/chip stats
+        // only exist in history, so they stay blank until the round finalizes.)
+        const isCurrentLiveGW = isLive && displayGW === appData.currentGW;
+
         const CHIP_NAMES = { wildcard: 'WC', freehit: 'FH', bboost: 'BB', '3xc': 'TC' };
 
         // Build per-player GW stats
         const players = appData.players.map(p => {
             const hist = p.gwHistory[displayGW] || {};
             const chipThisGW = p.chips.find(c => c.event === displayGW);
+            const histPoints = hist.points || 0;
+            const gwPoints = isCurrentLiveGW ? (p.eventTotal ?? histPoints) : histPoints;
             return {
                 entry: p.entry,
                 playerName: p.playerName,
                 entryName: p.entryName,
-                gwPoints: hist.points || 0,
+                gwPoints,
                 benchPoints: hist.pointsOnBench || 0,
                 transfers: hist.eventTransfers || 0,
                 hit: hist.eventTransfersCost || 0,
@@ -368,7 +377,7 @@ const APP = (() => {
                 <h2>Gameweek ${displayGW} Stats</h2>
                 ${isLive ? '<span class="live-pill meta-pill"><span class="live-dot"></span> LIVE</span>' : ''}
             </div>
-            <p class="section-sub">GW scores, chip usage, bench points and transfer activity for all managers</p>
+            <p class="section-sub">GW scores, chip usage, bench points and transfer activity for all managers${isCurrentLiveGW ? ' · <em>Live scores — bench &amp; transfer stats finalize after the round</em>' : ''}</p>
         </div>
 
         <div class="gw-stats-bar">
