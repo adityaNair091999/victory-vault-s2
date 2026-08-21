@@ -85,7 +85,8 @@ const APP = (() => {
             computed.standings = COMPETITIONS.computeSeasonStandings(appData);
             computed.monthly = COMPETITIONS.computeMonthlyPrize(appData);
             computed.lms = await COMPETITIONS.computeLastManStanding(appData, FPL_API.getEntryPicks, FPL_API.getLiveData);
-            computed.freeHit = COMPETITIONS.computeFreeHitChip(appData);
+            computed.champions = await COMPETITIONS.computeChampionsLeague(appData, FPL_API.getEntryPicks, FPL_API.getLiveData);
+            computed.worldcup = await COMPETITIONS.computeWorldCup(appData, FPL_API.getEntryPicks, FPL_API.getLiveData);
             computed.cup = COMPETITIONS.computeFPLCup(appData);
             computed.highestGW = COMPETITIONS.computeHighestGWScore(appData);
 
@@ -159,8 +160,9 @@ const APP = (() => {
             case 'standings': renderStandings(content); break;
             case 'progress': renderProgress(content); break;
             case 'monthly': renderMonthly(content); break;
+            case 'champions': renderChampions(content); break;
+            case 'worldcup': renderWorldCup(content); break;
             case 'lms': renderLMS(content); break;
-            case 'freehit': renderFreeHit(content); break;
             case 'cup': renderCup(content); break;
             case 'highestgw': renderHighestGW(content); break;
             case 'transfers': renderTransfers(content); break;
@@ -175,7 +177,8 @@ const APP = (() => {
         const s = computed.standings;
         const m = computed.monthly;
         const l = computed.lms;
-        const f = computed.freeHit;
+        const ch = computed.champions;
+        const wc = computed.worldcup;
         const h = computed.highestGW;
 
         let html = `<div class="overview-grid">`;
@@ -225,7 +228,7 @@ const APP = (() => {
                     <span class="mini-value">${currentMonth.playerScores[0]?.playerName || '—'}</span>
                     <span class="mini-detail">Leading with ${currentMonth.playerScores[0]?.total || 0} pts</span>
                 </div>` : ''}
-                <div class="mini-stat muted"><span class="mini-label">$30/month · ${m.filter(mo => mo.isComplete).length}/${m.length} months decided</span></div>
+                <div class="mini-stat muted"><span class="mini-label">$${CONFIG.PRIZES.MONTHLY}/month · ${m.filter(mo => mo.isComplete).length}/${m.length} months decided</span></div>
             </div>
         </div>`;
 
@@ -237,30 +240,44 @@ const APP = (() => {
                 <h3>Last Man Standing</h3>
             </div>
             <div class="card-body">
-                ${l.map(half => `
                 <div class="mini-stat">
-                    <span class="mini-label">${half.label}</span>
-                    <span class="mini-value">${half.winner ? '🏆 ' + half.winner.playerName : half.alive.length + ' players alive'}</span>
-                    <span class="mini-detail">${half.eliminations.length} eliminated · $${half.prize} prize</span>
-                </div>`).join('')}
+                    <span class="mini-label">GW${l.startGW}–${l.endGW}</span>
+                    <span class="mini-value">${l.winner ? '🏆 ' + l.winner.playerName : l.alive.length + ' players still alive'}</span>
+                    <span class="mini-detail">${l.eliminations.length} eliminated · $${l.prizeWinner} winner / $${l.prizeRunner} runner-up</span>
+                </div>
             </div>
         </div>`;
 
-        // Free Hit card
+        // Champions League card
+        const chLeader = ch.table && ch.table[0];
         html += `
         <div class="overview-card card-blue">
             <div class="card-header">
-                <span class="card-icon">🎯</span>
-                <h3>Free Hit Chip</h3>
+                <span class="card-icon">🏆</span>
+                <h3>Champions League</h3>
             </div>
             <div class="card-body">
-                ${Object.values(f.halves).map(half => `
                 <div class="mini-stat">
-                    <span class="mini-label">${half.label} ${half.isComplete ? '✅' : '🔄'}</span>
-                    <span class="mini-value">${half.winners.length > 0 ? half.winners.map(w => w.playerName).join(', ') : 'No usage yet'}</span>
-                    <span class="mini-detail">${half.bestScore !== null ? half.bestScore + ' pts' : '—'} · $${half.prize}</span>
-                </div>`).join('')}
-                <div class="mini-stat muted"><span class="mini-label">${f.usages.length} total Free Hit uses</span></div>
+                    <span class="mini-label">${ch.leaguePhaseDone ? 'Knockouts · top ' + ch.advance : 'League phase · GW' + ch.leaguePhaseStart + '–' + ch.leaguePhaseEnd}</span>
+                    <span class="mini-value">${chLeader ? chLeader.playerName : 'Awaiting results'}</span>
+                    <span class="mini-detail">${chLeader ? chLeader.h2hPoints + ' H2H pts' : 'H2H not started'} · $${ch.prizeWinner} / $${ch.prizeRunner}</span>
+                </div>
+            </div>
+        </div>`;
+
+        // World Cup card
+        html += `
+        <div class="overview-card card-green">
+            <div class="card-header">
+                <span class="card-icon">🌍</span>
+                <h3>World Cup</h3>
+            </div>
+            <div class="card-body">
+                <div class="mini-stat">
+                    <span class="mini-label">Group stage · GW${CONFIG.WORLDCUP.GROUPS.start}–${CONFIG.WORLDCUP.GROUPS.end}</span>
+                    <span class="mini-value">${wc.status === 'awaiting_draw' ? 'Groups drawn at GW20' : (wc.groupsDone ? 'Knockouts underway' : 'Groups in progress')}</span>
+                    <span class="mini-detail">3 groups of 10 · $${wc.prizeWinner} / $${wc.prizeRunner}</span>
+                </div>
             </div>
         </div>`;
 
@@ -269,7 +286,7 @@ const APP = (() => {
         <div class="overview-card card-purple">
             <div class="card-header">
                 <span class="card-icon">🏅</span>
-                <h3>FPL Cup</h3>
+                <h3>FA Cup</h3>
             </div>
             <div class="card-body">
                 <div class="mini-stat">
@@ -291,7 +308,7 @@ const APP = (() => {
                     <span class="trophy-emoji">🔥</span>
                     <div class="leader-info">
                         <span class="leader-name">${h.winners[0]?.playerName || '—'}</span>
-                        <span class="leader-detail">GW${h.winners[0]?.gw || '?'} · ${h.bestScore} pts (excl. Free Hit)</span>
+                        <span class="leader-detail">GW${h.winners[0]?.gw || '?'} · ${h.bestScore} pts</span>
                     </div>
                     <span class="leader-prize">$${CONFIG.PRIZES.HIGHEST_GW}</span>
                 </div>
@@ -346,7 +363,8 @@ const APP = (() => {
             ? Math.round(players.reduce((s, p) => s + p.gwPoints, 0) / players.length)
             : 0;
         const benchSorted = [...players].sort((a, b) => b.benchPoints - a.benchPoints);
-        const lmsHalf = computed.lms.find(h => displayGW >= h.startGW && displayGW <= h.endGW);
+        const lms = computed.lms;
+        const lmsInRange = displayGW >= lms.startGW && displayGW <= lms.endGW;
 
         let html = `
         <div class="section-header">
@@ -375,8 +393,8 @@ const APP = (() => {
             </div>
             <div class="gw-stat-item">
                 <span class="gw-stat-label">LMS Survivors</span>
-                <span class="gw-stat-value">${lmsHalf ? lmsHalf.alive.length + ' alive' : '—'}</span>
-                <span class="gw-stat-sub">${lmsHalf ? lmsHalf.label : 'Not in LMS range'}</span>
+                <span class="gw-stat-value">${lmsInRange ? lms.alive.length + ' alive' : '—'}</span>
+                <span class="gw-stat-sub">${lmsInRange ? 'GW' + lms.startGW + '–' + lms.endGW : 'Not in LMS range'}</span>
             </div>
         </div>
 
@@ -580,23 +598,9 @@ const APP = (() => {
 
         // --- Build highlight lookup sets from computed data ---
         const lmsElimSet = new Set();
-        if (computed.lms) {
-            for (const half of computed.lms) {
-                for (const elim of half.eliminations) {
-                    lmsElimSet.add(`${elim.entry}-${elim.gw}`);
-                }
-            }
-        }
-
-        const freeHitBestSet = new Set();
-        if (computed.freeHit && computed.freeHit.halves) {
-            for (const halfKey of ['HALF1', 'HALF2']) {
-                const half = computed.freeHit.halves[halfKey];
-                if (half && half.winners) {
-                    for (const w of half.winners) {
-                        freeHitBestSet.add(`${w.entry}-${w.gw}`);
-                    }
-                }
+        if (computed.lms && computed.lms.eliminations) {
+            for (const elim of computed.lms.eliminations) {
+                lmsElimSet.add(`${elim.entry}-${elim.gw}`);
             }
         }
 
@@ -623,7 +627,6 @@ const APP = (() => {
         <!-- Color Legend -->
         <div class="progress-legend">
             <span class="progress-legend-item"><span class="legend-swatch lms-elim-swatch"></span> LMS Elimination</span>
-            <span class="progress-legend-item"><span class="legend-swatch freehit-best-swatch"></span> Highest Free Hit</span>
             <span class="progress-legend-item"><span class="legend-swatch highest-gw-swatch"></span> Highest GW Score</span>
         </div>
 
@@ -653,9 +656,8 @@ const APP = (() => {
                                 ${gws.map(g => {
                 const score = p.gwScores[g] || 0;
                 const isLmsElim = lmsElimSet.has(`${p.entry}-${g}`);
-                const isFreeHitBest = freeHitBestSet.has(`${p.entry}-${g}`);
                 const isHighestGW = highestGWSet.has(`${p.entry}-${g}`);
-                const cls = isLmsElim ? 'gw-lms-elim' : isFreeHitBest ? 'gw-freehit-best' : isHighestGW ? 'gw-highest' : '';
+                const cls = isLmsElim ? 'gw-lms-elim' : isHighestGW ? 'gw-highest' : '';
                 return `<td class="col-gw ${cls}">${score || '—'}</td>`;
             }).join('')}
                                 <td class="col-total"><strong>${p.total}</strong></td>
@@ -811,8 +813,8 @@ const APP = (() => {
 
         let html = `
         <div class="section-header">
-            <h2>Monthly Prize — $30/month</h2>
-            <p class="section-sub">Highest combined score across designated gameweeks each month. Click a month to see all players.</p>
+            <h2>Monthly Prize — $${CONFIG.PRIZES.MONTHLY}/month</h2>
+            <p class="section-sub">Top performer each calendar month (a GW belongs to the month its deadline falls in). Click a month to see all players.</p>
         </div>
         <div class="monthly-grid">`;
 
@@ -903,170 +905,262 @@ const APP = (() => {
     // --------------------------------------------------------
     // LAST MAN STANDING TAB
     // --------------------------------------------------------
+    const TB_STEP_LABEL = { captain: 'Captain pts', vice_captain: 'Vice-captain pts', season_total: 'Season total' };
+
     function renderLMS(container) {
-        const halves = computed.lms;
+        const lms = computed.lms;
 
         let html = `
         <div class="section-header">
-            <h2>Last Man Standing — $60 per half</h2>
-            <p class="section-sub">Lowest scorer each gameweek is eliminated. Last survivor wins.</p>
+            <h2>Last Man Standing — $${lms.prizeWinner} winner / $${lms.prizeRunner} runner-up</h2>
+            <p class="section-sub">GW${lms.startGW}–${lms.endGW}. Lowest net scorer each gameweek is eliminated — last survivor wins.</p>
         </div>
-        <div class="lms-container">`;
-
-        for (const half of halves) {
-            html += `
+        <div class="lms-container">
             <div class="lms-half">
                 <div class="lms-half-header">
-                    <h3>${half.label}</h3>
-                    <span class="lms-status">${half.winner ? '🏆 Winner: ' + half.winner.playerName : half.alive.length + ' players still alive'}</span>
+                    <h3>GW${lms.startGW}–${lms.endGW}</h3>
+                    <span class="lms-status">${lms.winner ? '🏆 Winner: ' + lms.winner.playerName : lms.alive.length + ' players still alive'}</span>
                 </div>`;
 
-            // Alive players
-            if (half.alive.length > 0 && !half.winner) {
-                html += `<div class="lms-alive">
-                    <h4>🟢 Surviving Players (${half.alive.length})</h4>
-                    <div class="alive-chips">
-                        ${half.alive.map(p => `<span class="alive-chip">${p.playerName}</span>`).join('')}
+        if (lms.winner && lms.runnerUp) {
+            html += `<div class="lms-podium-note">🥈 Runner-up: <strong>${lms.runnerUp.playerName}</strong> — eliminated GW${lms.runnerUp.gw} · $${lms.prizeRunner}</div>`;
+        }
+
+        // Alive players
+        if (lms.alive.length > 0 && !lms.winner) {
+            html += `<div class="lms-alive">
+                <h4>🟢 Surviving Players (${lms.alive.length})</h4>
+                <div class="alive-chips">
+                    ${lms.alive.map(p => `<span class="alive-chip">${p.playerName}</span>`).join('')}
+                </div>
+            </div>`;
+        }
+
+        // Unresolved ties — needs manual resolution
+        if (lms.unresolvedTies && lms.unresolvedTies.length > 0) {
+            html += `<div class="lms-unresolved-ties">`;
+            for (const tie of lms.unresolvedTies) {
+                const playerList = tie.players
+                    .map(p => `${p.playerName} (season: ${p.seasonTotal} pts)`)
+                    .join(' · ');
+                html += `
+                <div class="lms-tie-warning">
+                    <span class="tie-warning-icon">⚠️</span>
+                    <div class="tie-warning-body">
+                        <strong>GW${tie.gw} — Manual resolution needed</strong>
+                        <span>${playerList} — all scored ${tie.score} pts. All tiebreakers exhausted (GW pts, captain, vice-captain, season total all equal).</span>
                     </div>
                 </div>`;
             }
-
-            // Unresolved ties — needs manual resolution
-            if (half.unresolvedTies && half.unresolvedTies.length > 0) {
-                html += `<div class="lms-unresolved-ties">`;
-                for (const tie of half.unresolvedTies) {
-                    const playerList = tie.players.map(p => {
-                        const parts = [p.playerName];
-                        if (tie.captainDataAvailable) parts.push(`captain: ${p.captainPts} pts`);
-                        parts.push(`season: ${p.seasonTotal} pts`);
-                        return `${parts[0]} (${parts.slice(1).join(', ')})`;
-                    }).join(' · ');
-                    const reason = !tie.captainDataAvailable
-                        ? 'Captain data unavailable — all tiebreakers exhausted.'
-                        : 'All tiebreakers exhausted (GW pts, captain pts, season total all equal).';
-                    html += `
-                    <div class="lms-tie-warning">
-                        <span class="tie-warning-icon">⚠️</span>
-                        <div class="tie-warning-body">
-                            <strong>GW${tie.gw} — Manual resolution needed</strong>
-                            <span>${playerList} — all scored ${tie.score} pts. ${reason}</span>
-                        </div>
-                    </div>`;
-                }
-                html += `</div>`;
-            }
-
-            // Elimination timeline
-            if (half.eliminations.length > 0) {
-                html += `<div class="lms-timeline">
-                    <h4>💀 Elimination Timeline</h4>
-                    <div class="timeline">
-                        ${half.eliminations.map((e, i) => {
-                            let tbHtml = '';
-                            if (e.tiebreaker && e.tiebreaker.steps) {
-                                console.log('[LMS debug] elimination:', e.playerName, 'GW', e.gw, 'steps:', JSON.stringify(e.tiebreaker.steps));
-                                const stepLines = e.tiebreaker.steps.map(step => {
-                                    const label = step.type === 'captain' ? 'Captain pts' : 'Season total';
-                                    if (step.outcome === 'eliminated') {
-                                        const survStr = step.survivors.map(s => `${s.playerName} (${s.pts})`).join(', ');
-                                        return `<span class="tb-step tb-eliminated">❌ ${label}: ${step.eliminatedPts} pts — eliminated (vs ${survStr})</span>`;
-                                    } else if (step.outcome === 'tied') {
-                                        return `<span class="tb-step tb-tied">✅ ${label}: tied (${step.allPts} pts each — no decision)</span>`;
-                                    } else {
-                                        return `<span class="tb-step tb-unavailable">⚠️ ${label}: data unavailable — skipped</span>`;
-                                    }
-                                }).join('');
-                                tbHtml = `<div class="timeline-tiebreaker-chain">${stepLines}</div>`;
-                            }
-                            return `
-                        <div class="timeline-item">
-                            <div class="timeline-marker">${i + 1}</div>
-                            <div class="timeline-content">
-                                <span class="timeline-gw">GW${e.gw}</span>
-                                <span class="timeline-name">${e.playerName} <span style="opacity:0.55;font-size:0.85em">(${e.entryName})</span></span>
-                                <span class="timeline-score">${e.score} pts</span>
-                                ${tbHtml}
-                            </div>
-                        </div>`;
-                        }).join('')}
-                    </div>
-                </div>`;
-            }
-
             html += `</div>`;
         }
 
-        html += `</div>`;
+        // Elimination timeline
+        if (lms.eliminations.length > 0) {
+            html += `<div class="lms-timeline">
+                <h4>💀 Elimination Timeline</h4>
+                <div class="timeline">
+                    ${lms.eliminations.map((e, i) => {
+                        let tbHtml = '';
+                        if (e.tiebreaker && e.tiebreaker.steps) {
+                            const stepLines = e.tiebreaker.steps.map(step => {
+                                const label = TB_STEP_LABEL[step.type] || step.type;
+                                if (step.outcome === 'eliminated') {
+                                    const survStr = step.survivors.map(s => `${s.playerName} (${s.pts})`).join(', ');
+                                    return `<span class="tb-step tb-eliminated">❌ ${label}: ${step.eliminatedPts} pts — eliminated (vs ${survStr})</span>`;
+                                } else if (step.outcome === 'tied') {
+                                    return `<span class="tb-step tb-tied">✅ ${label}: tied (${step.allPts} pts each — no decision)</span>`;
+                                } else {
+                                    return `<span class="tb-step tb-unavailable">⚠️ ${label}: data unavailable — skipped</span>`;
+                                }
+                            }).join('');
+                            tbHtml = `<div class="timeline-tiebreaker-chain">${stepLines}</div>`;
+                        }
+                        return `
+                    <div class="timeline-item">
+                        <div class="timeline-marker">${i + 1}</div>
+                        <div class="timeline-content">
+                            <span class="timeline-gw">GW${e.gw}</span>
+                            <span class="timeline-name">${e.playerName} <span style="opacity:0.55;font-size:0.85em">(${e.entryName})</span></span>
+                            <span class="timeline-score">${e.score} pts</span>
+                            ${tbHtml}
+                        </div>
+                    </div>`;
+                    }).join('')}
+                </div>
+            </div>`;
+        }
+
+        html += `</div></div>`;
         container.innerHTML = html;
     }
 
     // --------------------------------------------------------
-    // FREE HIT TAB
+    // Shared knockout-bracket renderer (Champions League / World Cup).
+    // Consumes rounds from COMPETITIONS.computeKnockout and reuses the
+    // cup-* markup/styles so all brackets look identical.
     // --------------------------------------------------------
-    function renderFreeHit(container) {
-        const fh = computed.freeHit;
+    function renderKnockoutRounds(rounds, icon) {
+        const initials = name => (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        let html = '';
+        for (const round of rounds) {
+            const decided = round.matches.filter(m => m.winner).length;
+            const roundComplete = round.matches.length > 0 && decided === round.matches.length;
+            const roundPending = decided === 0;
+            html += `
+            <div class="cup-round">
+                <div class="cup-round-banner">
+                    <div class="cup-round-title"><span class="cup-round-icon">${icon}</span><h3>${round.label}</h3></div>
+                    <div class="cup-round-badges">
+                        <span class="cup-round-gw-badge">GW${round.event}</span>
+                        ${roundComplete ? '<span class="cup-stage-badge complete">Complete</span>' : roundPending ? '<span class="cup-stage-badge upcoming">Upcoming</span>' : '<span class="cup-stage-badge live">In Progress</span>'}
+                    </div>
+                </div>
+                <div class="cup-matches">`;
+            for (const m of round.matches) {
+                const e1Name = m.entry1PlayerName || m.entry1Name;
+                const e2Name = m.entry2PlayerName || m.entry2Name;
+                if (m.isBye) {
+                    html += `<div class="cup-match"><div class="cup-team winner"><div class="cup-team-info"><span class="cup-manager-name">${e1Name || e2Name}</span><span class="cup-team-label">Bye — advances</span></div></div></div>`;
+                    continue;
+                }
+                if (!m.winner) {
+                    html += `
+                    <div class="cup-match cup-match-pending">
+                        <div class="cup-team">
+                            <div class="cup-team-avatar">${initials(e1Name)}</div>
+                            <div class="cup-team-info"><span class="cup-manager-name">${e1Name}</span><span class="cup-team-label">${m.entry1Name}</span></div>
+                        </div>
+                        <div class="cup-divider"><span class="cup-gw-upcoming">GW${m.event}</span><span class="cup-vs-label">VS</span></div>
+                        <div class="cup-team">
+                            <div class="cup-team-avatar">${initials(e2Name)}</div>
+                            <div class="cup-team-info"><span class="cup-manager-name">${e2Name}</span><span class="cup-team-label">${m.entry2Name}</span></div>
+                        </div>
+                    </div>`;
+                } else {
+                    const e1Win = m.winner === m.entry1;
+                    const e2Win = m.winner === m.entry2;
+                    const tbNote = m.tiebreak ? '<div class="cup-tiebreak-note">Decided on tie-breaker</div>' : '';
+                    html += `
+                    <div class="cup-match">
+                        <div class="cup-team ${e1Win ? 'winner' : 'loser'}">
+                            <div class="cup-team-info"><span class="cup-manager-name">${e1Name}</span><span class="cup-team-label">${m.entry1Name}</span></div>
+                            <div class="cup-team-right">${e1Win ? '<span class="cup-win-badge">WIN</span>' : '<span class="cup-loss-badge">OUT</span>'}<span class="cup-score">${m.entry1Points}</span></div>
+                        </div>
+                        <div class="cup-divider"><span class="cup-vs-label">VS</span></div>
+                        <div class="cup-team ${e2Win ? 'winner' : 'loser'}">
+                            <div class="cup-team-info"><span class="cup-manager-name">${e2Name}</span><span class="cup-team-label">${m.entry2Name}</span></div>
+                            <div class="cup-team-right">${e2Win ? '<span class="cup-win-badge">WIN</span>' : '<span class="cup-loss-badge">OUT</span>'}<span class="cup-score">${m.entry2Points}</span></div>
+                        </div>
+                        ${tbNote}
+                    </div>`;
+                }
+            }
+            html += `</div></div>`;
+        }
+        return html;
+    }
+
+    // Champion banner shown once a bracket has a winner.
+    function championBanner(entryId, label) {
+        const p = appData.players.find(x => x.entry === entryId);
+        if (!p) return '';
+        return `<div class="champion-banner"><span class="champion-icon">🏆</span><div class="champion-text"><span class="champion-label">${label}</span><span class="champion-name">${p.playerName}</span><span class="champion-team">${p.entryName}</span></div></div>`;
+    }
+
+    // H2H standings table (shared by Champions League + World Cup groups).
+    function renderH2HTable(rows, qualifyCount) {
+        let html = `<div class="table-container"><table class="data-table h2h-table">
+            <thead><tr><th class="col-rank">#</th><th>Manager</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PF</th><th>Pts</th></tr></thead>
+            <tbody>`;
+        rows.forEach(r => {
+            const qualified = qualifyCount && r.rank <= qualifyCount;
+            html += `<tr class="${qualified ? 'qualified-row' : ''}">
+                <td class="col-rank"><span class="rank-badge ${qualified ? 'gold' : ''}">${r.rank}</span></td>
+                <td><strong>${r.playerName}</strong></td>
+                <td style="color:var(--text-muted)">${r.entryName}</td>
+                <td>${r.played || 0}</td><td>${r.won || 0}</td><td>${r.drawn || 0}</td><td>${r.lost || 0}</td>
+                <td>${r.pointsFor || 0}</td><td><strong>${r.h2hPoints || 0}</strong></td>
+            </tr>`;
+        });
+        html += `</tbody></table></div>`;
+        return html;
+    }
+
+    // --------------------------------------------------------
+    // CHAMPIONS LEAGUE TAB
+    // --------------------------------------------------------
+    function renderChampions(container) {
+        const ch = computed.champions;
 
         let html = `
         <div class="section-header">
-            <h2>Free Hit Chip — $30 per half</h2>
-            <p class="section-sub">Best use of the Free Hit chip in each half of the season</p>
-        </div>
-        <div class="freehit-container">`;
+            <h2>Champions League — $${ch.prizeWinner} winner / $${ch.prizeRunner} runner-up</h2>
+            <p class="section-sub">Head-to-head league GW${ch.leaguePhaseStart}–${ch.leaguePhaseEnd} · Top ${ch.advance} advance to a single-elimination knockout (GW${CONFIG.CHAMPIONS.KO_ROUNDS[0]}–${CONFIG.CHAMPIONS.KO_ROUNDS[CONFIG.CHAMPIONS.KO_ROUNDS.length - 1]}).</p>
+        </div>`;
 
-        for (const [key, half] of Object.entries(fh.halves)) {
-            html += `
-            <div class="freehit-half">
-                <div class="freehit-half-header">
-                    <h3>${half.label} ${half.isComplete ? '✅' : '🔄'}</h3>
-                    <span class="freehit-prize">$${half.prize}</span>
-                </div>`;
-
-            if (half.usages.length > 0) {
-                if (half.winners.length > 0) {
-                    html += `<div class="freehit-winner">
-                        <span class="winner-icon">🏆</span>
-                        <span>${half.winners.map(w => w.playerName).join(', ')}</span>
-                        <span class="winner-score">${half.bestScore} pts</span>
-                    </div>`;
-                }
-
-                html += `
-                <table class="data-table freehit-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Manager</th>
-                            <th>Team</th>
-                            <th>GW</th>
-                            <th>Score</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-                half.usages.forEach((u, i) => {
-                    const isWinner = half.winners.some(w => w.entry === u.entry);
-                    html += `
-                        <tr class="${isWinner ? 'winner-row' : ''}">
-                            <td>${i + 1}</td>
-                            <td><strong>${u.playerName}</strong></td>
-                            <td>${u.entryName}</td>
-                            <td>GW${u.gw}</td>
-                            <td><strong>${u.score}</strong></td>
-                        </tr>`;
-                });
-
-                html += `</tbody></table>`;
-            } else {
-                html += `<div class="empty-state">
-                    <span class="empty-icon">🎯</span>
-                    <p>No Free Hit chips used yet in this half</p>
-                </div>`;
-            }
-
-            html += `</div>`;
+        if (!ch.hasData) {
+            html += `<div class="empty-state-large"><span class="empty-icon-large">🏆</span><h3>Awaiting Champions League data</h3><p>The head-to-head league standings are not available yet.</p></div>`;
+            container.innerHTML = html;
+            return;
         }
 
+        if (ch.bracket && ch.bracket.champion) {
+            html += championBanner(ch.bracket.champion, 'Champions League Winner');
+        }
+
+        html += `<div class="winners-section-header">League Phase — GW${ch.leaguePhaseStart}–${ch.leaguePhaseEnd}${ch.leaguePhaseDone ? ' (final)' : ''}</div>`;
+        html += `<p class="section-sub" style="margin:-4px 0 8px">Top ${ch.advance} (highlighted) advance. Ties on H2H points broken by overall season points.</p>`;
+        html += renderH2HTable(ch.table, ch.advance);
+
+        html += `<div class="winners-section-header">Knockout Phase</div>`;
+        if (ch.bracket) {
+            html += `<div class="cup-bracket">${renderKnockoutRounds(ch.bracket.rounds, '🏆')}</div>`;
+        } else {
+            html += `<div class="empty-state"><span class="empty-icon">⚔️</span><p>The knockout bracket is seeded once the league phase concludes after GW${ch.leaguePhaseEnd}.</p></div>`;
+        }
+        container.innerHTML = html;
+    }
+
+    // --------------------------------------------------------
+    // WORLD CUP TAB
+    // --------------------------------------------------------
+    function renderWorldCup(container) {
+        const wc = computed.worldcup;
+
+        let html = `
+        <div class="section-header">
+            <h2>World Cup — $${wc.prizeWinner} winner / $${wc.prizeRunner} runner-up</h2>
+            <p class="section-sub">3 head-to-head groups of 10 (GW${CONFIG.WORLDCUP.GROUPS.start}–${CONFIG.WORLDCUP.GROUPS.end}) · Top 2 per group + 2 best third-placed advance to an 8-team knockout (GW${CONFIG.WORLDCUP.KO_ROUNDS[0]}–${CONFIG.WORLDCUP.KO_ROUNDS[CONFIG.WORLDCUP.KO_ROUNDS.length - 1]}).</p>
+        </div>`;
+
+        if (wc.status === 'awaiting_draw') {
+            html += `<div class="empty-state-large">
+                <span class="empty-icon-large">🌍</span>
+                <h3>Groups drawn at GW20</h3>
+                <p>The three randomized head-to-head groups are created and codes shared before GW${CONFIG.WORLDCUP.GROUPS.start}.</p>
+                <p>Group stage runs GW${CONFIG.WORLDCUP.GROUPS.start}–${CONFIG.WORLDCUP.GROUPS.end}, knockouts GW${CONFIG.WORLDCUP.KO_ROUNDS[0]}–${CONFIG.WORLDCUP.KO_ROUNDS[CONFIG.WORLDCUP.KO_ROUNDS.length - 1]}.</p>
+            </div>`;
+            container.innerHTML = html;
+            return;
+        }
+
+        if (wc.bracket && wc.bracket.champion) {
+            html += championBanner(wc.bracket.champion, 'World Cup Winner');
+        }
+
+        html += `<div class="wc-groups-grid">`;
+        for (const g of wc.groups) {
+            html += `<div class="wc-group"><div class="winners-section-header">Group ${g.letter}</div>${renderH2HTable(g.table, 2)}</div>`;
+        }
         html += `</div>`;
+
+        html += `<div class="winners-section-header">Knockout Phase</div>`;
+        if (wc.bracket) {
+            html += `<div class="cup-bracket">${renderKnockoutRounds(wc.bracket.rounds, '🌍')}</div>`;
+        } else {
+            html += `<div class="empty-state"><span class="empty-icon">⚔️</span><p>The knockout bracket is seeded once the group stage concludes after GW${wc.groupEnd}.</p></div>`;
+        }
         container.innerHTML = html;
     }
 
@@ -1078,8 +1172,8 @@ const APP = (() => {
 
         let html = `
         <div class="section-header">
-            <h2>FPL Cup — $${CONFIG.PRIZES.CUP}</h2>
-            <p class="section-sub">Straight knockout competition · Winner takes $${CONFIG.PRIZES.CUP}</p>
+            <h2>FA Cup — $${CONFIG.PRIZES.CUP}</h2>
+            <p class="section-sub">The native FPL knockout cup (GW34–38) · Winner takes $${CONFIG.PRIZES.CUP}</p>
         </div>`;
 
         if (!cup.hasCup || cup.rounds.length === 0) {
@@ -1087,7 +1181,7 @@ const APP = (() => {
             <div class="empty-state-large">
                 <span class="empty-icon-large">🏅</span>
                 <h3>Cup Not Started Yet</h3>
-                <p>The FPL Cup for this league typically begins around Gameweek 34-35.</p>
+                <p>The FA Cup for this league runs GW34–38.</p>
                 <p>The winner receives <strong>$${CONFIG.PRIZES.CUP}</strong></p>
             </div>`;
         } else {
@@ -1225,7 +1319,7 @@ const APP = (() => {
         let html = `
         <div class="section-header">
             <h2>Highest Single GW Score — $${CONFIG.PRIZES.HIGHEST_GW}</h2>
-            <p class="section-sub">Best individual gameweek score across the entire season (excluding Free Hit)</p>
+            <p class="section-sub">Best individual gameweek score across the entire season (Free Hit points eligible)</p>
         </div>`;
 
         // Winner showcase
@@ -1460,9 +1554,16 @@ const APP = (() => {
         const s = computed.standings;
         const m = computed.monthly;
         const l = computed.lms;
-        const f = computed.freeHit;
+        const ch = computed.champions;
+        const wc = computed.worldcup;
         const cup = computed.cup;
         const h = computed.highestGW;
+
+        // Look up a player summary by entry id (for knockout winners/runners-up).
+        function playerById(entryId) {
+            const p = appData.players.find(x => x.entry === entryId);
+            return p ? { entry: p.entry, playerName: p.playerName, entryName: p.entryName } : null;
+        }
 
         // Extract cup winner from the last completed round's final match
         function getCupWinner() {
@@ -1498,22 +1599,25 @@ const APP = (() => {
                     }
                 }
             }
-            for (const half of l) {
-                if (half.winner) {
-                    add(half.winner.entry, half.winner.playerName, half.winner.entryName,
-                        half.key === 'HALF1' ? 'LMS H1' : 'LMS H2', half.prize);
+            // Last Man Standing — single run (winner + runner-up)
+            if (l.winner) add(l.winner.entry, l.winner.playerName, l.winner.entryName, 'LMS Winner', l.prizeWinner);
+            if (l.runnerUp) add(l.runnerUp.entry, l.runnerUp.playerName, l.runnerUp.entryName, 'LMS Runner-up', l.prizeRunner);
+
+            // Champions League + World Cup knockout winners/runners-up
+            function addBracketPrizes(bracket, label, winnerPrize, runnerPrize) {
+                if (!bracket || !bracket.champion) return;
+                const champ = playerById(bracket.champion);
+                if (champ) add(champ.entry, champ.playerName, champ.entryName, `${label} Winner`, winnerPrize);
+                if (bracket.runnerUp) {
+                    const ru = playerById(bracket.runnerUp);
+                    if (ru) add(ru.entry, ru.playerName, ru.entryName, `${label} Runner-up`, runnerPrize);
                 }
             }
-            for (const [key, half] of Object.entries(f.halves)) {
-                if (half.isComplete && half.winners.length > 0) {
-                    for (const w of half.winners) {
-                        add(w.entry, w.playerName, w.entryName,
-                            key === 'HALF1' ? 'Free Hit H1' : 'Free Hit H2', half.prizePerWinner);
-                    }
-                }
-            }
+            addBracketPrizes(ch.bracket, 'Champions League', ch.prizeWinner, ch.prizeRunner);
+            addBracketPrizes(wc.bracket, 'World Cup', wc.prizeWinner, wc.prizeRunner);
+
             const cw = getCupWinner();
-            if (cw) add(cw.entry, cw.playerName, cw.entryName, 'FPL Cup', cup.prize);
+            if (cw) add(cw.entry, cw.playerName, cw.entryName, 'FA Cup', cup.prize);
             if (h.winners.length > 0) {
                 for (const w of h.winners) {
                     add(w.entry, w.playerName, w.entryName, 'Highest GW', h.prizePerWinner);
@@ -1526,9 +1630,10 @@ const APP = (() => {
         const prizePot = buildPrizePot();
         const totalPool =
             CONFIG.PRIZES.SEASON[1] + CONFIG.PRIZES.SEASON[2] + CONFIG.PRIZES.SEASON[3] +
-            Object.keys(CONFIG.MONTHLY_GWS).length * CONFIG.PRIZES.MONTHLY +
-            2 * CONFIG.PRIZES.LMS +
-            2 * CONFIG.PRIZES.FREE_HIT +
+            Object.keys(CONFIG.MONTHLY_PHASES).length * CONFIG.PRIZES.MONTHLY +
+            CONFIG.PRIZES.LMS.WINNER + CONFIG.PRIZES.LMS.RUNNER +
+            CONFIG.PRIZES.CHAMPIONS.WINNER + CONFIG.PRIZES.CHAMPIONS.RUNNER +
+            CONFIG.PRIZES.WORLDCUP.WINNER + CONFIG.PRIZES.WORLDCUP.RUNNER +
             CONFIG.PRIZES.CUP +
             CONFIG.PRIZES.HIGHEST_GW;
 
@@ -1619,53 +1724,67 @@ const APP = (() => {
         html += `</tbody></table></div>`;
 
         // ── Knockout / other competitions ──
-        html += `<div class="winners-section-header">Knockout &amp; Chip Competitions</div>`;
+        html += `<div class="winners-section-header">Knockout &amp; Other Competitions</div>`;
         html += `<div class="winners-comps-grid">`;
 
-        for (const half of l) {
-            const label = half.key === 'HALF1' ? '1st Half (GW2–18)' : '2nd Half (GW20–38)';
-            html += `
-            <div class="comp-winner-card">
-                <div class="comp-winner-header">
-                    <span class="comp-winner-icon">💀</span>
-                    <span class="comp-winner-title">Last Man Standing · ${label}</span>
-                    <span class="comp-winner-prize">$${half.prize}</span>
-                </div>
-                <div class="comp-winner-body">
-                    ${half.winner
-                        ? `<div class="comp-winner-name">${half.winner.playerName}</div>
-                           <div class="comp-winner-team">${half.winner.entryName}</div>`
-                        : `<div class="comp-winner-name comp-winner-pending">${half.alive.length} player${half.alive.length !== 1 ? 's' : ''} still alive</div>`
-                    }
-                </div>
-            </div>`;
-        }
+        // Last Man Standing (single run)
+        html += `
+        <div class="comp-winner-card">
+            <div class="comp-winner-header">
+                <span class="comp-winner-icon">💀</span>
+                <span class="comp-winner-title">Last Man Standing</span>
+                <span class="comp-winner-prize">$${l.prizeWinner + l.prizeRunner}</span>
+            </div>
+            <div class="comp-winner-body">
+                ${l.winner
+                    ? `<div class="comp-winner-name">🏆 ${l.winner.playerName}</div>
+                       <div class="comp-winner-team">${l.winner.entryName}${l.runnerUp ? ' · RU: ' + l.runnerUp.playerName : ''}</div>`
+                    : `<div class="comp-winner-name comp-winner-pending">${l.alive.length} player${l.alive.length !== 1 ? 's' : ''} still alive</div>`
+                }
+            </div>
+        </div>`;
 
-        for (const [key, half] of Object.entries(f.halves)) {
-            html += `
-            <div class="comp-winner-card">
-                <div class="comp-winner-header">
-                    <span class="comp-winner-icon">🎯</span>
-                    <span class="comp-winner-title">Free Hit · ${half.label}</span>
-                    <span class="comp-winner-prize">$${half.prize}</span>
-                </div>
-                <div class="comp-winner-body">
-                    ${half.isComplete && half.winners.length > 0
-                        ? `<div class="comp-winner-name">${half.winners.map(w => w.playerName).join(', ')}</div>
-                           <div class="comp-winner-team">${half.winners[0].entryName} · GW${half.winners[0].gw} · ${half.bestScore} pts</div>`
-                        : half.usages.length === 0
-                            ? `<div class="comp-winner-name comp-winner-pending">No Free Hit used</div>`
-                            : `<div class="comp-winner-name comp-winner-pending">In progress</div>`
-                    }
-                </div>
-            </div>`;
-        }
+        // Champions League
+        const chChamp = ch.bracket && ch.bracket.champion ? playerById(ch.bracket.champion) : null;
+        html += `
+        <div class="comp-winner-card">
+            <div class="comp-winner-header">
+                <span class="comp-winner-icon">🏆</span>
+                <span class="comp-winner-title">Champions League</span>
+                <span class="comp-winner-prize">$${ch.prizeWinner + ch.prizeRunner}</span>
+            </div>
+            <div class="comp-winner-body">
+                ${chChamp
+                    ? `<div class="comp-winner-name">🏆 ${chChamp.playerName}</div>
+                       <div class="comp-winner-team">${chChamp.entryName}</div>`
+                    : `<div class="comp-winner-name comp-winner-pending">${ch.leaguePhaseDone ? 'Knockouts in progress' : 'League phase in progress'}</div>`
+                }
+            </div>
+        </div>`;
+
+        // World Cup
+        const wcChamp = wc.bracket && wc.bracket.champion ? playerById(wc.bracket.champion) : null;
+        html += `
+        <div class="comp-winner-card">
+            <div class="comp-winner-header">
+                <span class="comp-winner-icon">🌍</span>
+                <span class="comp-winner-title">World Cup</span>
+                <span class="comp-winner-prize">$${wc.prizeWinner + wc.prizeRunner}</span>
+            </div>
+            <div class="comp-winner-body">
+                ${wcChamp
+                    ? `<div class="comp-winner-name">🏆 ${wcChamp.playerName}</div>
+                       <div class="comp-winner-team">${wcChamp.entryName}</div>`
+                    : `<div class="comp-winner-name comp-winner-pending">${wc.status === 'awaiting_draw' ? 'Groups drawn at GW20' : (wc.groupsDone ? 'Knockouts in progress' : 'Group stage in progress')}</div>`
+                }
+            </div>
+        </div>`;
 
         html += `
         <div class="comp-winner-card">
             <div class="comp-winner-header">
                 <span class="comp-winner-icon">🏅</span>
-                <span class="comp-winner-title">FPL Cup</span>
+                <span class="comp-winner-title">FA Cup</span>
                 <span class="comp-winner-prize">$${cup.prize}</span>
             </div>
             <div class="comp-winner-body">

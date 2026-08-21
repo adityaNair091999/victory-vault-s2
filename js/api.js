@@ -55,8 +55,22 @@ const FPL_API = (() => {
     }
 
     async function getCupMatches(cupLeagueId) {
+        return getH2HMatches(cupLeagueId);
+    }
+
+    // Head-to-head league standings (Champions League / World Cup groups)
+    async function getH2HStandings(leagueId) {
         try {
-            const data = await fetchJSON(`${CONFIG.API_BASE}/leagues-h2h-matches/league/${cupLeagueId}/`);
+            return await fetchJSON(`${CONFIG.API_BASE}/leagues-h2h/${leagueId}/standings/`);
+        } catch {
+            return null;
+        }
+    }
+
+    // Head-to-head match results for a league (paginated endpoint returns page 1)
+    async function getH2HMatches(leagueId) {
+        try {
+            const data = await fetchJSON(`${CONFIG.API_BASE}/leagues-h2h-matches/league/${leagueId}/`);
             return data && data.results ? data.results : [];
         } catch {
             return [];
@@ -123,12 +137,38 @@ const FPL_API = (() => {
         // Step 5: Fetch phase standings for monthly prizes
         if (progressCallback) progressCallback('Loading monthly standings...');
         result.phaseStandings = {};
-        const phaseEntries = Object.entries(CONFIG.MONTHLY_GWS);
+        const phaseEntries = Object.entries(CONFIG.MONTHLY_PHASES);
         const phasePromises = phaseEntries.map(([, cfg]) => getLeaguePhaseStandings(cfg.phaseId));
         const phaseResults = await Promise.all(phasePromises);
         phaseEntries.forEach(([month], i) => {
             result.phaseStandings[month] = phaseResults[i];
         });
+
+        // Step 5b: Champions League (H2H) standings + matches
+        if (progressCallback) progressCallback('Loading Champions League...');
+        result.championsH2H = CONFIG.CHAMPIONS_H2H_LEAGUE_ID
+            ? await getH2HStandings(CONFIG.CHAMPIONS_H2H_LEAGUE_ID)
+            : null;
+        result.championsMatches = CONFIG.CHAMPIONS_H2H_LEAGUE_ID
+            ? await getH2HMatches(CONFIG.CHAMPIONS_H2H_LEAGUE_ID)
+            : [];
+
+        // Step 5c: World Cup group standings + matches (only once groups are drawn)
+        result.worldcupGroups = null;
+        if (Array.isArray(CONFIG.WORLDCUP_GROUP_LEAGUE_IDS) && CONFIG.WORLDCUP_GROUP_LEAGUE_IDS.length > 0) {
+            if (progressCallback) progressCallback('Loading World Cup groups...');
+            const groupStandings = await Promise.all(
+                CONFIG.WORLDCUP_GROUP_LEAGUE_IDS.map(id => getH2HStandings(id))
+            );
+            const groupMatches = await Promise.all(
+                CONFIG.WORLDCUP_GROUP_LEAGUE_IDS.map(id => getH2HMatches(id))
+            );
+            result.worldcupGroups = CONFIG.WORLDCUP_GROUP_LEAGUE_IDS.map((id, i) => ({
+                leagueId: id,
+                standings: groupStandings[i],
+                matches: groupMatches[i],
+            }));
+        }
 
         // Step 6: Fetch transfer history for all entries
         if (progressCallback) progressCallback('Loading transfer history...');
@@ -193,6 +233,8 @@ const FPL_API = (() => {
         getEntryHistory,
         getEntryPicks,
         getCupMatches,
+        getH2HStandings,
+        getH2HMatches,
         getEntryTransfers,
         getLiveData,
     };

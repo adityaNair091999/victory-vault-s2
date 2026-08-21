@@ -4,14 +4,111 @@
 
 const COMPETITIONS = (() => {
 
+    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+
     // Helper: get net GW score (points minus transfer hit cost)
     function getNetScore(gwData) {
         if (!gwData) return 0;
         return gwData.points - (gwData.eventTransfersCost || 0);
     }
 
+    // Build a { month -> [gw ids] } map from bootstrap event deadlines.
+    // A gameweek belongs to the month in which its deadline falls (S3 rule).
+    function buildMonthlyGWMap(bootstrap) {
+        const map = {};
+        const events = (bootstrap && bootstrap.events) || [];
+        for (const ev of events) {
+            if (!ev.deadline_time) continue;
+            const monthName = MONTH_NAMES[new Date(ev.deadline_time).getUTCMonth()];
+            if (!map[monthName]) map[monthName] = [];
+            map[monthName].push(ev.id);
+        }
+        return map;
+    }
+
     // --------------------------------------------------------
-    // 1. SEASON STANDINGS
+    // Pick resolver — lazily fetches captain / vice-captain points
+    // for tie-breakers, sharing a per-GW live-points cache.
+    // getEntryPicksFn and getLiveDataFn are injected so this module
+    // stays decoupled from the API layer.
+    // --------------------------------------------------------
+    function makePickResolver(getEntryPicksFn, getLiveDataFn) {
+        const liveCache = {};
+
+        async function liveMap(gw) {
+            if (!liveCache[gw]) {
+                const live = await getLiveDataFn(gw);
+                const elemMap = {};
+                if (live && live.elements) {
+                    for (const el of live.elements) elemMap[el.id] = el.stats.total_points;
+                }
+                liveCache[gw] = elemMap;
+            }
+            return liveCache[gw];
+        }
+
+        // Points scored by the pick matching `predicate` (captain / vice), or null.
+        async function pickPoints(entryId, gw, predicate) {
+            try {
+                const picks = await getEntryPicksFn(entryId, gw);
+                if (!picks || !picks.picks) return null;
+                const pick = picks.picks.find(predicate);
+                if (!pick) return null;
+                const map = await liveMap(gw);
+                const pts = map[pick.element];
+                return pts !== undefined ? pts : null;
+            } catch {
+                return null;
+            }
+        }
+
+        return {
+            getCaptainPoints: (id, gw) => pickPoints(id, gw, p => p.is_captain),
+            getVicePoints: (id, gw) => pickPoints(id, gw, p => p.is_vice_captain),
+        };
+    }
+
+    // Resolve a tie among `tiedIds` using an ordered list of resolvers.
+    // Each resolver: { type, get: async(id, gw) => number|null }. Lower value
+    // is eliminated. Returns { eliminated: [ids]|null, steps: [...] } where the
+    // full chain (including inconclusive steps) is recorded for the UI.
+    async function resolveTie(tiedIds, gw, playerMap, resolvers) {
+        const steps = [];
+        for (const r of resolvers) {
+            const vals = {};
+            let allAvailable = true;
+            for (const id of tiedIds) {
+                const v = await r.get(id, gw);
+                vals[id] = v;
+                if (v === null || v === undefined) allAvailable = false;
+            }
+            if (!allAvailable) {
+                steps.push({ type: r.type, outcome: 'unavailable' });
+                continue;
+            }
+            const min = Math.min(...tiedIds.map(id => vals[id]));
+            const elim = tiedIds.filter(id => vals[id] === min);
+            const surv = tiedIds.filter(id => vals[id] > min);
+            if (surv.length > 0) {
+                return {
+                    eliminated: elim,
+                    valsByEntry: vals,
+                    steps: [...steps, {
+                        type: r.type,
+                        outcome: 'eliminated',
+                        eliminatedPts: min,
+                        survivors: surv.map(s => ({ playerName: playerMap[s].playerName, pts: vals[s] })),
+                    }],
+                };
+            }
+            steps.push({ type: r.type, outcome: 'tied', allPts: min });
+        }
+        return { eliminated: null, steps };
+    }
+
+    // --------------------------------------------------------
+    // 1. SEASON STANDINGS (Classic League)
     // --------------------------------------------------------
     function computeSeasonStandings(data) {
         const players = data.players
@@ -36,30 +133,27 @@ const COMPETITIONS = (() => {
     // --------------------------------------------------------
     function computeMonthlyPrize(data) {
         const lastFinished = data.lastFinishedGW;
+        const gwMap = buildMonthlyGWMap(data.bootstrap);
         const months = [];
 
-        for (const [month, cfg] of Object.entries(CONFIG.MONTHLY_GWS)) {
-            const gwsPlayed = cfg.gws.filter(gw => gw <= lastFinished);
-            const gwsAll = cfg.gws;
+        for (const [month, cfg] of Object.entries(CONFIG.MONTHLY_PHASES)) {
+            const gwsAll = gwMap[month] || [];
+            const gwsPlayed = gwsAll.filter(gw => gw <= lastFinished);
             const isComplete = gwsPlayed.length === gwsAll.length && gwsAll.length > 0;
             const isStarted = gwsPlayed.length > 0;
 
-            // Build a lookup of official FPL phase totals
+            // Official FPL phase totals (authoritative for the month)
             const phaseData = data.phaseStandings && data.phaseStandings[month];
             const phaseTotals = {};
             if (phaseData && phaseData.standings && phaseData.standings.results) {
-                for (const r of phaseData.standings.results) {
-                    phaseTotals[r.entry] = r.total;
-                }
+                for (const r of phaseData.standings.results) phaseTotals[r.entry] = r.total;
             }
 
             const playerScores = data.players.map(p => {
                 const gwScores = {};
                 for (const gw of gwsPlayed) {
-                    // Use raw points for per-GW display (matches FPL website GW column)
                     gwScores[gw] = p.gwHistory[gw] ? p.gwHistory[gw].points : 0;
                 }
-                // Use official FPL phase total if available, else fall back to sum
                 const total = (phaseTotals[p.entry] !== undefined)
                     ? phaseTotals[p.entry]
                     : Object.values(gwScores).reduce((a, b) => a + b, 0);
@@ -72,7 +166,6 @@ const COMPETITIONS = (() => {
                 };
             }).sort((a, b) => b.total - a.total);
 
-            // Determine winner(s)
             let winners = [];
             if (isComplete && playerScores.length > 0) {
                 const best = playerScores[0].total;
@@ -95,288 +188,328 @@ const COMPETITIONS = (() => {
     }
 
     // --------------------------------------------------------
-    // 3. LAST MAN STANDING
+    // 3. LAST MAN STANDING — single run GW1–29
     // --------------------------------------------------------
-    // getEntryPicksFn and getLiveDataFn are injected so this module stays
-    // decoupled from the API layer but can still fetch captain data on demand.
     async function computeLastManStanding(data, getEntryPicksFn, getLiveDataFn) {
+        const cfg = CONFIG.LMS;
         const lastFinished = data.lastFinishedGW;
-        const halves = [];
+        const resolver = makePickResolver(getEntryPicksFn, getLiveDataFn);
 
-        // Cache live element-points maps by GW to avoid duplicate fetches.
-        const liveCache = {};
+        const playerMap = {};
+        data.players.forEach(p => { playerMap[p.entry] = p; });
 
-        // Returns the points scored by entryId's captain in the given GW,
-        // or null if the data cannot be determined.
-        async function getCaptainPoints(entryId, gw) {
-            try {
-                const picks = await getEntryPicksFn(entryId, gw);
-                if (!picks || !picks.picks) { console.log(`[captain debug] entry ${entryId} GW${gw}: no picks`); return null; }
-                const captainPick = picks.picks.find(p => p.is_captain);
-                if (!captainPick) { console.log(`[captain debug] entry ${entryId} GW${gw}: no captain pick found`); return null; }
+        const tieResolvers = [
+            { type: 'captain', get: resolver.getCaptainPoints },
+            { type: 'vice_captain', get: resolver.getVicePoints },
+            { type: 'season_total', get: async (id) => playerMap[id].total },
+        ];
 
-                if (!liveCache[gw]) {
-                    const live = await getLiveDataFn(gw);
-                    const elemMap = {};
-                    if (live && live.elements) {
-                        for (const el of live.elements) {
-                            elemMap[el.id] = el.stats.total_points;
-                        }
-                    }
-                    liveCache[gw] = elemMap;
-                }
+        const eliminations = [];
+        const unresolvedTies = [];
+        const alivePlayers = new Set(data.players.map(p => p.entry));
 
-                const pts = liveCache[gw][captainPick.element];
-                console.log(`[captain debug] entry ${entryId} GW${gw}: captain element ${captainPick.element}, pts=${pts}`);
-                return pts !== undefined ? pts : null;
-            } catch (err) {
-                console.log(`[captain debug] entry ${entryId} GW${gw}: caught error — ${err.message}`);
-                return null;
+        for (let gw = cfg.start; gw <= Math.min(cfg.end, lastFinished); gw++) {
+            if (alivePlayers.size <= 1) break;
+
+            // Lowest net scorer(s) among alive players
+            let lowest = Infinity;
+            let lowestPlayers = [];
+            for (const entryId of alivePlayers) {
+                const score = getNetScore(playerMap[entryId].gwHistory[gw]);
+                if (score < lowest) { lowest = score; lowestPlayers = [entryId]; }
+                else if (score === lowest) { lowestPlayers.push(entryId); }
             }
-        }
 
-        for (const [key, cfg] of Object.entries(CONFIG.LMS)) {
-            const eliminations = [];
-            const unresolvedTies = [];
-            const alivePlayers = new Set(data.players.map(p => p.entry));
-            const playerMap = {};
-            data.players.forEach(p => { playerMap[p.entry] = p; });
-
-            for (let gw = cfg.start; gw <= Math.min(cfg.end, lastFinished); gw++) {
-                if (alivePlayers.size <= 1) break;
-
-                // Find lowest scorer(s) among alive players.
-                let lowest = Infinity;
-                let lowestPlayers = [];
-
-                for (const entryId of alivePlayers) {
-                    const score = getNetScore(playerMap[entryId].gwHistory[gw]);
-                    if (score < lowest) {
-                        lowest = score;
-                        lowestPlayers = [entryId];
-                    } else if (score === lowest) {
-                        lowestPlayers.push(entryId);
-                    }
-                }
-
-                if (lowestPlayers.length === 1) {
-                    // No tie — straightforward elimination.
-                    const id = lowestPlayers[0];
-                    eliminations.push({
-                        gw,
-                        entry: id,
-                        playerName: playerMap[id].playerName,
-                        entryName: playerMap[id].entryName,
-                        score: lowest,
-                        tiebreaker: null,
-                    });
-                    alivePlayers.delete(id);
-                } else {
-                    // ── Tiebreaker chain ───────────────────────────────────────
-                    // stillTied: the group we haven't resolved yet (starts as all
-                    // players tied at lowest GW score, shrinks if a step only
-                    // partially resolves — e.g. 5-way tie → 2 eliminated by
-                    // captain pts, 3 survive without needing further resolution).
-                    // Each step looks only at the minimum within stillTied.
-                    // ──────────────────────────────────────────────────────────
-
-                    // Each evaluated tiebreaker step is recorded here so the UI
-                    // can show the full chain, not just the deciding step.
-                    const tiebreakerSteps = [];
-
-                    // Step 1: captain points (lower captain pts → eliminated).
-                    const captainPtsMap = {};
-                    for (const id of lowestPlayers) {
-                        captainPtsMap[id] = await getCaptainPoints(id, gw);
-                    }
-
-                    const captainAvailable = lowestPlayers.every(id => captainPtsMap[id] !== null);
-                    let resolved = false;
-
-                    if (captainAvailable) {
-                        const minCaptain = Math.min(...lowestPlayers.map(id => captainPtsMap[id]));
-                        const captainElim = lowestPlayers.filter(id => captainPtsMap[id] === minCaptain);
-                        const captainSurv = lowestPlayers.filter(id => captainPtsMap[id] > minCaptain);
-
-                        if (captainSurv.length > 0) {
-                            // Captain pts resolved it — record the decisive step and stop.
-                            for (const id of captainElim) {
-                                eliminations.push({
-                                    gw,
-                                    entry: id,
-                                    playerName: playerMap[id].playerName,
-                                    entryName: playerMap[id].entryName,
-                                    score: lowest,
-                                    tiebreaker: {
-                                        steps: [{
-                                            type: 'captain',
-                                            outcome: 'eliminated',
-                                            eliminatedPts: captainPtsMap[id],
-                                            survivors: captainSurv.map(s => ({
-                                                playerName: playerMap[s].playerName,
-                                                pts: captainPtsMap[s],
-                                            })),
-                                        }],
-                                    },
-                                });
-                                alivePlayers.delete(id);
-                            }
-                            resolved = true;
-                        } else {
-                            // All tied on captain pts — record as inconclusive and fall through.
-                            tiebreakerSteps.push({
-                                type: 'captain',
-                                outcome: 'tied',
-                                allPts: minCaptain,
-                            });
-                        }
-                    } else {
-                        // Captain data missing — record and fall through to step 2.
-                        tiebreakerSteps.push({
-                            type: 'captain',
-                            outcome: 'unavailable',
-                        });
-                    }
-
-                    if (!resolved) {
-                        // Step 2: season total (lower season total → eliminated).
-                        const minSeason = Math.min(...lowestPlayers.map(id => playerMap[id].total));
-                        const seasonElim = lowestPlayers.filter(id => playerMap[id].total === minSeason);
-                        const seasonSurv = lowestPlayers.filter(id => playerMap[id].total > minSeason);
-
-                        if (seasonSurv.length > 0) {
-                            for (const id of seasonElim) {
-                                eliminations.push({
-                                    gw,
-                                    entry: id,
-                                    playerName: playerMap[id].playerName,
-                                    entryName: playerMap[id].entryName,
-                                    score: lowest,
-                                    tiebreaker: {
-                                        // Prepend the inconclusive captain step so the full
-                                        // chain is visible in the UI.
-                                        steps: [
-                                            ...tiebreakerSteps,
-                                            {
-                                                type: 'season_total',
-                                                outcome: 'eliminated',
-                                                eliminatedPts: playerMap[id].total,
-                                                survivors: seasonSurv.map(s => ({
-                                                    playerName: playerMap[s].playerName,
-                                                    pts: playerMap[s].total,
-                                                })),
-                                            },
-                                        ],
-                                    },
-                                });
-                                alivePlayers.delete(id);
-                            }
-                            resolved = true;
-                        }
-                    }
-
-                    if (!resolved) {
-                        // Step 3: unresolved — surface for manual review.
-                        unresolvedTies.push({
-                            gw,
+            if (lowestPlayers.length === 1) {
+                const id = lowestPlayers[0];
+                eliminations.push({
+                    gw, entry: id,
+                    playerName: playerMap[id].playerName,
+                    entryName: playerMap[id].entryName,
+                    score: lowest, tiebreaker: null,
+                });
+                alivePlayers.delete(id);
+            } else {
+                const res = await resolveTie(lowestPlayers, gw, playerMap, tieResolvers);
+                if (res.eliminated) {
+                    for (const id of res.eliminated) {
+                        eliminations.push({
+                            gw, entry: id,
+                            playerName: playerMap[id].playerName,
+                            entryName: playerMap[id].entryName,
                             score: lowest,
-                            captainDataAvailable: captainAvailable,
-                            players: lowestPlayers.map(id => ({
-                                entry: id,
-                                playerName: playerMap[id].playerName,
-                                entryName: playerMap[id].entryName,
-                                captainPts: captainPtsMap[id] ?? null,
-                                seasonTotal: playerMap[id].total,
-                            })),
+                            tiebreaker: { steps: res.steps },
                         });
+                        alivePlayers.delete(id);
                     }
-                }
-            }
-
-            const alive = [...alivePlayers].map(id => ({
-                entry: id,
-                playerName: playerMap[id].playerName,
-                entryName: playerMap[id].entryName,
-            }));
-
-            const isComplete = alivePlayers.size === 1 && lastFinished >= cfg.end;
-
-            halves.push({
-                label: key === 'HALF1' ? '1st Half (GW2–GW18)' : '2nd Half (GW20–GW38)',
-                key,
-                startGW: cfg.start,
-                endGW: cfg.end,
-                eliminations,
-                unresolvedTies,
-                alive,
-                isComplete,
-                winner: isComplete && alive.length === 1 ? alive[0] : null,
-                prize: cfg.prize,
-            });
-        }
-
-        return halves;
-    }
-
-    // --------------------------------------------------------
-    // 4. FREE HIT CHIP
-    // --------------------------------------------------------
-    function computeFreeHitChip(data) {
-        const freeHitUsages = [];
-
-        for (const p of data.players) {
-            for (const chip of p.chips) {
-                if (chip.name === 'freehit') {
-                    const gw = chip.event;
-                    const score = getNetScore(p.gwHistory[gw]);
-                    const half = gw <= 19 ? 'HALF1' : 'HALF2';
-                    freeHitUsages.push({
-                        entry: p.entry,
-                        playerName: p.playerName,
-                        entryName: p.entryName,
-                        gw,
-                        score,
-                        half,
+                } else {
+                    unresolvedTies.push({
+                        gw, score: lowest,
+                        players: lowestPlayers.map(id => ({
+                            entry: id,
+                            playerName: playerMap[id].playerName,
+                            entryName: playerMap[id].entryName,
+                            seasonTotal: playerMap[id].total,
+                        })),
                     });
                 }
             }
         }
 
-        // Best per half
-        const halves = {};
-        for (const halfKey of ['HALF1', 'HALF2']) {
-            const usages = freeHitUsages.filter(u => u.half === halfKey);
-            usages.sort((a, b) => b.score - a.score);
-            const bestScore = usages.length > 0 ? usages[0].score : null;
-            const winners = usages.filter(u => u.score === bestScore);
-            const halfLabel = halfKey === 'HALF1' ? '1st Half' : '2nd Half';
+        const alive = [...alivePlayers].map(id => ({
+            entry: id,
+            playerName: playerMap[id].playerName,
+            entryName: playerMap[id].entryName,
+        }));
 
-            // Determine if this half is complete
-            const halfEnd = halfKey === 'HALF1' ? 19 : 38;
-            const isComplete = data.lastFinishedGW >= halfEnd;
+        const isComplete = alivePlayers.size === 1 && lastFinished >= cfg.end;
+        // Runner-up = the manager eliminated last (field reduced from 2 → 1).
+        const lastElim = eliminations.length > 0 ? eliminations[eliminations.length - 1] : null;
 
-            halves[halfKey] = {
-                label: halfLabel,
-                usages,
-                winners: bestScore !== null ? winners : [],
-                bestScore,
-                isComplete,
-                prize: CONFIG.PRIZES.FREE_HIT,
-                prizePerWinner: winners.length > 0 ? CONFIG.PRIZES.FREE_HIT / winners.length : CONFIG.PRIZES.FREE_HIT,
-            };
-        }
-
-        return { usages: freeHitUsages, halves };
+        return {
+            startGW: cfg.start,
+            endGW: cfg.end,
+            eliminations,
+            unresolvedTies,
+            alive,
+            isComplete,
+            winner: alive.length === 1 ? alive[0] : null,
+            runnerUp: isComplete && lastElim ? lastElim : null,
+            prizeWinner: CONFIG.PRIZES.LMS.WINNER,
+            prizeRunner: CONFIG.PRIZES.LMS.RUNNER,
+        };
     }
 
     // --------------------------------------------------------
-    // 5. FPL CUP
+    // Shared single-elimination knockout engine.
+    //   pairings   : [[entryIdA, entryIdB], ...] first-round matches (bracket order)
+    //   roundGWs   : [gwR1, gwR2, ...] gameweek each round is decided on
+    //   roundNames : optional ['Quarter-Final', 'Semi-Final', 'Final']
+    //   playerMap  : { entry -> player }
+    //   lastFinished, resolver (from makePickResolver)
+    // Returns { rounds:[{label,event,matches:[...]}], champion, runnerUp }.
+    // --------------------------------------------------------
+    async function computeKnockout({ pairings, roundGWs, roundNames, playerMap, lastFinished }, resolver) {
+        const names = roundNames || defaultRoundNames(pairings.length);
+        const rounds = [];
+        let current = pairings.map(pr => pr.slice());
+        let champion = null, runnerUp = null;
+
+        for (let r = 0; r < roundGWs.length && current.length > 0; r++) {
+            const gw = roundGWs[r];
+            const roundMatches = [];
+            const winners = [];
+
+            for (const [a, b] of current) {
+                const match = await resolveMatch(a, b, gw, playerMap, lastFinished, resolver);
+                roundMatches.push(match);
+                winners.push(match.winner);   // may be null if not yet decided
+            }
+
+            rounds.push({ label: names[r] || `Round ${r + 1}`, event: gw, matches: roundMatches });
+
+            // Only advance if every match in the round is decided.
+            if (winners.some(w => !w)) break;
+
+            if (winners.length === 1) {
+                champion = winners[0];
+                const finalMatch = roundMatches[0];
+                runnerUp = finalMatch.winner === finalMatch.entry1 ? finalMatch.entry2 : finalMatch.entry1;
+                break;
+            }
+            // Pair winners for the next round (2i vs 2i+1)
+            const next = [];
+            for (let i = 0; i < winners.length; i += 2) next.push([winners[i], winners[i + 1]]);
+            current = next;
+        }
+
+        return { rounds, champion, runnerUp };
+    }
+
+    function defaultRoundNames(firstRoundPairs) {
+        if (firstRoundPairs === 4) return ['Quarter-Final', 'Semi-Final', 'Final'];
+        if (firstRoundPairs === 2) return ['Semi-Final', 'Final'];
+        if (firstRoundPairs === 1) return ['Final'];
+        return [];
+    }
+
+    // Resolve one knockout match on gameweek `gw`.
+    async function resolveMatch(a, b, gw, playerMap, lastFinished, resolver) {
+        const pa = playerMap[a], pb = playerMap[b];
+        const base = {
+            entry1: a, entry2: b,
+            entry1Name: pa ? pa.entryName : '—', entry2Name: pb ? pb.entryName : '—',
+            entry1PlayerName: pa ? pa.playerName : 'TBD', entry2PlayerName: pb ? pb.playerName : 'TBD',
+            event: gw, winner: null, tiebreak: null,
+        };
+
+        // Bye — one side missing → auto-advance.
+        if (!a || !b) {
+            base.isBye = true;
+            base.winner = a || b;
+            return base;
+        }
+
+        base.entry1Points = getNetScore(pa.gwHistory[gw]);
+        base.entry2Points = getNetScore(pb.gwHistory[gw]);
+
+        if (gw > lastFinished) return base; // not played yet
+
+        if (base.entry1Points > base.entry2Points) base.winner = a;
+        else if (base.entry2Points > base.entry1Points) base.winner = b;
+        else {
+            // Tie → captain → vice → season total (lower is eliminated).
+            const tieResolvers = [
+                { type: 'captain', get: resolver.getCaptainPoints },
+                { type: 'vice_captain', get: resolver.getVicePoints },
+                { type: 'season_total', get: async (id) => playerMap[id].total },
+            ];
+            const res = await resolveTie([a, b], gw, playerMap, tieResolvers);
+            if (res.eliminated && res.eliminated.length === 1) {
+                base.winner = res.eliminated[0] === a ? b : a;
+                base.tiebreak = res.steps;
+            }
+        }
+        return base;
+    }
+
+    // Standard 8-seed bracket order so seeds 1 & 2 can only meet in the final.
+    function bracketPairsFromSeeds(seeds) {
+        const order8 = [[0, 7], [3, 4], [2, 5], [1, 6]]; // 1v8, 4v5, 3v6, 2v7
+        if (seeds.length >= 8) return order8.map(([i, j]) => [seeds[i], seeds[j]]);
+        // Fallback for smaller fields: pair outermost seeds inward.
+        const pairs = [];
+        for (let i = 0; i < Math.floor(seeds.length / 2); i++) pairs.push([seeds[i], seeds[seeds.length - 1 - i]]);
+        return pairs;
+    }
+
+    // Rank an H2H standings payload; tie-break by overall season points.
+    function rankH2H(h2h, seasonPtsByEntry) {
+        const results = (h2h && h2h.standings && h2h.standings.results) || [];
+        return results.map(r => ({
+            entry: r.entry,
+            entryName: r.entry_name,
+            playerName: r.player_name,
+            played: r.matches_played,
+            won: r.matches_won,
+            drawn: r.matches_drawn,
+            lost: r.matches_lost,
+            pointsFor: r.points_for,
+            h2hPoints: r.total,
+            seasonPoints: seasonPtsByEntry[r.entry] || 0,
+        })).sort((x, y) => (y.h2hPoints - x.h2hPoints) || (y.seasonPoints - x.seasonPoints));
+    }
+
+    // --------------------------------------------------------
+    // 4. CHAMPIONS LEAGUE — H2H (GW1–15) → top-8 knockout (GW15–18)
+    // --------------------------------------------------------
+    async function computeChampionsLeague(data, getEntryPicksFn, getLiveDataFn) {
+        const cfg = CONFIG.CHAMPIONS;
+        const lastFinished = data.lastFinishedGW;
+        const seasonPtsByEntry = {};
+        const playerMap = {};
+        data.players.forEach(p => { seasonPtsByEntry[p.entry] = p.total; playerMap[p.entry] = p; });
+
+        const table = rankH2H(data.championsH2H, seasonPtsByEntry);
+        table.forEach((t, i) => { t.rank = i + 1; });
+
+        const leaguePhaseDone = lastFinished >= cfg.H2H.end;
+        let bracket = null;
+
+        if (leaguePhaseDone && table.length >= cfg.ADVANCE) {
+            const seeds = table.slice(0, cfg.ADVANCE).map(t => t.entry);
+            const pairings = bracketPairsFromSeeds(seeds);
+            const resolver = makePickResolver(getEntryPicksFn, getLiveDataFn);
+            bracket = await computeKnockout(
+                { pairings, roundGWs: cfg.KO_ROUNDS, playerMap, lastFinished }, resolver);
+        }
+
+        return {
+            hasData: !!(data.championsH2H && data.championsH2H.standings),
+            table,
+            leaguePhaseStart: cfg.H2H.start,
+            leaguePhaseEnd: cfg.H2H.end,
+            leaguePhaseDone,
+            advance: cfg.ADVANCE,
+            bracket,
+            prizeWinner: CONFIG.PRIZES.CHAMPIONS.WINNER,
+            prizeRunner: CONFIG.PRIZES.CHAMPIONS.RUNNER,
+        };
+    }
+
+    // --------------------------------------------------------
+    // 5. WORLD CUP — 3 groups (GW21–29) → 8-team knockout (GW30–32)
+    // --------------------------------------------------------
+    async function computeWorldCup(data, getEntryPicksFn, getLiveDataFn) {
+        const cfg = CONFIG.WORLDCUP;
+        if (!data.worldcupGroups) {
+            return { status: 'awaiting_draw',
+                prizeWinner: CONFIG.PRIZES.WORLDCUP.WINNER,
+                prizeRunner: CONFIG.PRIZES.WORLDCUP.RUNNER };
+        }
+
+        const lastFinished = data.lastFinishedGW;
+        const playerMap = {};
+        const seasonPtsFromGroupStart = {};
+        data.players.forEach(p => {
+            playerMap[p.entry] = p;
+            // "overall season FPL points accumulated from GW21 onward"
+            let s = 0;
+            for (let gw = cfg.GROUPS.start; gw <= lastFinished; gw++) s += getNetScore(p.gwHistory[gw]);
+            seasonPtsFromGroupStart[p.entry] = s;
+        });
+
+        const groupLetters = ['A', 'B', 'C'];
+        const groups = data.worldcupGroups.map((g, i) => ({
+            letter: groupLetters[i] || String.fromCharCode(65 + i),
+            table: rankH2H(g.standings, seasonPtsFromGroupStart)
+                .map((t, idx) => ({ ...t, rank: idx + 1 })),
+        }));
+
+        const groupsDone = lastFinished >= cfg.GROUPS.end && groups.every(g => g.table.length >= 3);
+        let bracket = null;
+
+        if (groupsDone) {
+            const G = {};
+            groups.forEach(g => { G[g.letter] = g.table; });
+            // Best two 3rd-placed across groups (by accumulated group-stage H2H points)
+            const thirds = groups
+                .map(g => g.table[2])
+                .filter(Boolean)
+                .sort((a, b) => (b.h2hPoints - a.h2hPoints) || (b.seasonPoints - a.seasonPoints));
+            const bestThird = thirds[0], secondThird = thirds[1];
+
+            // Seeding per S3 rules (cross-group draw)
+            const pairings = [
+                [G.A[0].entry, secondThird.entry],  // QF1: A1 vs 2nd-best 3rd
+                [G.B[0].entry, bestThird.entry],     // QF2: B1 vs best 3rd
+                [G.C[0].entry, G.B[1].entry],        // QF3: C1 vs B2
+                [G.A[1].entry, G.C[1].entry],        // QF4: A2 vs C2
+            ];
+            const resolver = makePickResolver(getEntryPicksFn, getLiveDataFn);
+            bracket = await computeKnockout(
+                { pairings, roundGWs: cfg.KO_ROUNDS, playerMap, lastFinished }, resolver);
+        }
+
+        return {
+            status: 'active',
+            groups,
+            groupStart: cfg.GROUPS.start,
+            groupEnd: cfg.GROUPS.end,
+            groupsDone,
+            bracket,
+            prizeWinner: CONFIG.PRIZES.WORLDCUP.WINNER,
+            prizeRunner: CONFIG.PRIZES.WORLDCUP.RUNNER,
+        };
+    }
+
+    // --------------------------------------------------------
+    // 6. FA CUP (FPL CUP)
     // --------------------------------------------------------
     function computeFPLCup(data) {
         const hasCup = data.league && data.league.league && data.league.league.has_cup;
         const rawMatches = data.cupMatches || [];
 
-        // Map to a consistent shape
         const allMatches = rawMatches.map(m => ({
             event: m.event,
             entry1: m.entry_1_entry,
@@ -393,70 +526,43 @@ const COMPETITIONS = (() => {
             knockoutName: m.knockout_name,
         }));
 
-        // Group by round (knockout_name), sorted by GW event order
         const roundMap = {};
         for (const m of allMatches) {
             const key = m.knockoutName;
             if (!roundMap[key]) roundMap[key] = { event: m.event, label: m.knockoutName, matches: [], byes: [] };
-            if (m.isBye) {
-                roundMap[key].byes.push(m);
-            } else {
-                roundMap[key].matches.push(m);
-            }
+            if (m.isBye) roundMap[key].byes.push(m);
+            else roundMap[key].matches.push(m);
         }
-
-        // Sort rounds by GW event
         const rounds = Object.values(roundMap).sort((a, b) => a.event - b.event);
 
-        return {
-            hasCup,
-            matches: allMatches,
-            rounds,
-            prize: CONFIG.PRIZES.CUP,
-        };
+        return { hasCup, matches: allMatches, rounds, prize: CONFIG.PRIZES.CUP };
     }
 
     // --------------------------------------------------------
-    // 6. HIGHEST SINGLE GW SCORE
+    // 7. HIGHEST SINGLE GW SCORE (Free Hit points fully eligible)
     // --------------------------------------------------------
     function computeHighestGWScore(data) {
         const lastFinished = data.lastFinishedGW;
         const allScores = [];
 
-        // Build set of free hit GWs per player
-        const freeHitGWs = {};
-        for (const p of data.players) {
-            freeHitGWs[p.entry] = new Set();
-            for (const chip of p.chips) {
-                if (chip.name === 'freehit') {
-                    freeHitGWs[p.entry].add(chip.event);
-                }
-            }
-        }
-
         for (const p of data.players) {
             for (let gw = 1; gw <= lastFinished; gw++) {
-                // Exclude free hit GWs
-                if (freeHitGWs[p.entry] && freeHitGWs[p.entry].has(gw)) continue;
-
-                const score = getNetScore(p.gwHistory[gw]);
                 allScores.push({
                     entry: p.entry,
                     playerName: p.playerName,
                     entryName: p.entryName,
                     gw,
-                    score,
+                    score: getNetScore(p.gwHistory[gw]),
                 });
             }
         }
 
         allScores.sort((a, b) => b.score - a.score);
-
         const bestScore = allScores.length > 0 ? allScores[0].score : 0;
         const winners = allScores.filter(s => s.score === bestScore);
 
         return {
-            topScores: allScores.slice(0, 30), // top 30 for display
+            topScores: allScores.slice(0, 30),
             bestScore,
             winners,
             prize: CONFIG.PRIZES.HIGHEST_GW,
@@ -468,7 +574,8 @@ const COMPETITIONS = (() => {
         computeSeasonStandings,
         computeMonthlyPrize,
         computeLastManStanding,
-        computeFreeHitChip,
+        computeChampionsLeague,
+        computeWorldCup,
         computeFPLCup,
         computeHighestGWScore,
     };
