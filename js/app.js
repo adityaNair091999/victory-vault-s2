@@ -1156,14 +1156,14 @@ const APP = (() => {
 
     // Head-to-head fixture cards for one gameweek (Champions League league phase).
     function championFixtureCards(fixture) {
-        const decided = fixture.isFinished || fixture.isLive;
         let h = `<div class="cup-matches">`;
         for (const m of fixture.matches) {
             if (m.isBye) {
                 h += `<div class="cup-match"><div class="cup-team winner"><div class="cup-team-info"><span class="cup-manager-name">${m.entry1Name || m.entry2Name}</span><span class="cup-team-label">Bye</span></div></div></div>`;
                 continue;
             }
-            if (!decided) {
+            if (!fixture.isFinished && !fixture.isLive) {
+                // Upcoming gameweek — no scores yet.
                 h += `
                 <div class="cup-match cup-match-pending">
                     <div class="cup-team"><div class="cup-team-info"><span class="cup-manager-name">${m.entry1Name}</span></div></div>
@@ -1172,6 +1172,24 @@ const APP = (() => {
                 </div>`;
                 continue;
             }
+            if (fixture.isLive) {
+                // Live gameweek — show provisional scores only, no result badges
+                // or winner/loser styling (the matchup isn't decided yet).
+                h += `
+                <div class="cup-match">
+                    <div class="cup-team">
+                        <div class="cup-team-info"><span class="cup-manager-name">${m.entry1Name}</span></div>
+                        <div class="cup-team-right"><span class="cup-score">${m.entry1Points}</span></div>
+                    </div>
+                    <div class="cup-divider"><span class="cup-vs-label">LIVE</span></div>
+                    <div class="cup-team">
+                        <div class="cup-team-info"><span class="cup-manager-name">${m.entry2Name}</span></div>
+                        <div class="cup-team-right"><span class="cup-score">${m.entry2Points}</span></div>
+                    </div>
+                </div>`;
+                continue;
+            }
+            // Finished gameweek — final result with WIN / LOSS / DRAW.
             const isDraw = !m.winner;
             const e1Win = m.winner === m.entry1;
             const e2Win = m.winner === m.entry2;
@@ -1184,7 +1202,7 @@ const APP = (() => {
                     <div class="cup-team-info"><span class="cup-manager-name">${m.entry1Name}</span></div>
                     <div class="cup-team-right">${badge(e1Win)}<span class="cup-score">${m.entry1Points}</span></div>
                 </div>
-                <div class="cup-divider"><span class="cup-vs-label">${fixture.isLive ? 'LIVE' : 'VS'}</span></div>
+                <div class="cup-divider"><span class="cup-vs-label">VS</span></div>
                 <div class="cup-team ${e2Cls}">
                     <div class="cup-team-info"><span class="cup-manager-name">${m.entry2Name}</span></div>
                     <div class="cup-team-right">${badge(e2Win)}<span class="cup-score">${m.entry2Points}</span></div>
