@@ -2900,3 +2900,51 @@ body {
     font-size: 0.9rem;
     color: var(--text-primary);
 }
+
+/* Champions League — weekly fixtures gameweek selector */
+.gw-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 4px 0 16px;
+}
+.gw-selector-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.gw-selector-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-accent);
+}
+.gw-selector-btn.active {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+}
+.gw-fixtures {
+    margin-bottom: 8px;
+}
+.cup-team.draw {
+    opacity: 0.9;
+}
+.cup-draw-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+}

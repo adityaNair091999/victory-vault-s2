@@ -413,6 +413,35 @@ const COMPETITIONS = (() => {
         const table = rankH2H(data.championsH2H, seasonPtsByEntry);
         table.forEach((t, i) => { t.rank = i + 1; });
 
+        // League-phase fixtures, grouped by gameweek. For the current live GW the
+        // H2H endpoint still reports 0 points, so overlay each side's live
+        // event_total (from the classic standings) and derive a provisional result.
+        const eventTotalByEntry = {};
+        data.players.forEach(p => { eventTotalByEntry[p.entry] = p.eventTotal; });
+        const byGW = {};
+        for (const m of (data.championsMatches || [])) {
+            if (m.is_knockout || m.event == null || m.event > cfg.H2H.end) continue;
+            const isLiveGW = m.event === data.currentGW && m.event > lastFinished;
+            let e1p = m.entry_1_points, e2p = m.entry_2_points, winner = m.winner;
+            if (isLiveGW) {
+                e1p = eventTotalByEntry[m.entry_1_entry] ?? 0;
+                e2p = eventTotalByEntry[m.entry_2_entry] ?? 0;
+                winner = e1p > e2p ? m.entry_1_entry : e2p > e1p ? m.entry_2_entry : null;
+            }
+            (byGW[m.event] = byGW[m.event] || []).push({
+                event: m.event,
+                entry1: m.entry_1_entry, entry1Name: m.entry_1_player_name || m.entry_1_name, entry1Points: e1p,
+                entry2: m.entry_2_entry, entry2Name: m.entry_2_player_name || m.entry_2_name, entry2Points: e2p,
+                winner, isBye: m.is_bye,
+            });
+        }
+        const leagueFixtures = Object.keys(byGW).map(Number).sort((a, b) => a - b).map(ev => ({
+            event: ev,
+            isLive: ev === data.currentGW && ev > lastFinished,
+            isFinished: ev <= lastFinished,
+            matches: byGW[ev],
+        }));
+
         const leaguePhaseDone = lastFinished >= cfg.H2H.end;
         let bracket = null;
 
@@ -427,6 +456,7 @@ const COMPETITIONS = (() => {
         return {
             hasData: !!(data.championsH2H && data.championsH2H.standings),
             table,
+            leagueFixtures,
             leaguePhaseStart: cfg.H2H.start,
             leaguePhaseEnd: cfg.H2H.end,
             leaguePhaseDone,

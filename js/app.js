@@ -1118,6 +1118,22 @@ const APP = (() => {
         html += `<p class="section-sub" style="margin:-4px 0 8px">Top ${ch.advance} (highlighted) advance. Ties on H2H points broken by overall season points.</p>`;
         html += renderH2HTable(ch.table, ch.advance);
 
+        // Weekly head-to-head fixtures, one gameweek at a time.
+        let defaultFixtureGW = null;
+        if (ch.leagueFixtures && ch.leagueFixtures.length) {
+            const live = ch.leagueFixtures.find(f => f.isLive);
+            const lastDone = [...ch.leagueFixtures].reverse().find(f => f.isFinished);
+            defaultFixtureGW = (live || lastDone || ch.leagueFixtures[0]).event;
+
+            html += `<div class="winners-section-header">Weekly Fixtures</div>`;
+            html += `<div class="gw-selector">${ch.leagueFixtures.map(f =>
+                `<button class="gw-selector-btn ${f.event === defaultFixtureGW ? 'active' : ''}" data-gw="${f.event}">GW${f.event}${f.isLive ? ' <span class="live-dot"></span>' : ''}</button>`
+            ).join('')}</div>`;
+            html += ch.leagueFixtures.map(f =>
+                `<div class="gw-fixtures" data-gw-panel="${f.event}" style="display:${f.event === defaultFixtureGW ? 'block' : 'none'}">${championFixtureCards(f)}</div>`
+            ).join('');
+        }
+
         html += `<div class="winners-section-header">Knockout Phase</div>`;
         if (ch.bracket) {
             html += `<div class="cup-bracket">${renderKnockoutRounds(ch.bracket.rounds, '🏆')}</div>`;
@@ -1125,6 +1141,58 @@ const APP = (() => {
             html += `<div class="empty-state"><span class="empty-icon">⚔️</span><p>The knockout bracket is seeded once the league phase concludes after GW${ch.leaguePhaseEnd}.</p></div>`;
         }
         container.innerHTML = html;
+
+        // Wire the gameweek selector to toggle fixture panels.
+        container.querySelectorAll('.gw-selector-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const gw = btn.dataset.gw;
+                container.querySelectorAll('.gw-selector-btn').forEach(b => b.classList.toggle('active', b === btn));
+                container.querySelectorAll('.gw-fixtures').forEach(panel => {
+                    panel.style.display = panel.dataset.gwPanel === gw ? 'block' : 'none';
+                });
+            });
+        });
+    }
+
+    // Head-to-head fixture cards for one gameweek (Champions League league phase).
+    function championFixtureCards(fixture) {
+        const decided = fixture.isFinished || fixture.isLive;
+        let h = `<div class="cup-matches">`;
+        for (const m of fixture.matches) {
+            if (m.isBye) {
+                h += `<div class="cup-match"><div class="cup-team winner"><div class="cup-team-info"><span class="cup-manager-name">${m.entry1Name || m.entry2Name}</span><span class="cup-team-label">Bye</span></div></div></div>`;
+                continue;
+            }
+            if (!decided) {
+                h += `
+                <div class="cup-match cup-match-pending">
+                    <div class="cup-team"><div class="cup-team-info"><span class="cup-manager-name">${m.entry1Name}</span></div></div>
+                    <div class="cup-divider"><span class="cup-gw-upcoming">GW${m.event}</span><span class="cup-vs-label">VS</span></div>
+                    <div class="cup-team"><div class="cup-team-info"><span class="cup-manager-name">${m.entry2Name}</span></div></div>
+                </div>`;
+                continue;
+            }
+            const isDraw = !m.winner;
+            const e1Win = m.winner === m.entry1;
+            const e2Win = m.winner === m.entry2;
+            const e1Cls = isDraw ? 'draw' : (e1Win ? 'winner' : 'loser');
+            const e2Cls = isDraw ? 'draw' : (e2Win ? 'winner' : 'loser');
+            const badge = win => isDraw ? '<span class="cup-draw-badge">DRAW</span>' : (win ? '<span class="cup-win-badge">WIN</span>' : '<span class="cup-loss-badge">LOSS</span>');
+            h += `
+            <div class="cup-match">
+                <div class="cup-team ${e1Cls}">
+                    <div class="cup-team-info"><span class="cup-manager-name">${m.entry1Name}</span></div>
+                    <div class="cup-team-right">${badge(e1Win)}<span class="cup-score">${m.entry1Points}</span></div>
+                </div>
+                <div class="cup-divider"><span class="cup-vs-label">${fixture.isLive ? 'LIVE' : 'VS'}</span></div>
+                <div class="cup-team ${e2Cls}">
+                    <div class="cup-team-info"><span class="cup-manager-name">${m.entry2Name}</span></div>
+                    <div class="cup-team-right">${badge(e2Win)}<span class="cup-score">${m.entry2Points}</span></div>
+                </div>
+            </div>`;
+        }
+        h += `</div>`;
+        return h;
     }
 
     // --------------------------------------------------------

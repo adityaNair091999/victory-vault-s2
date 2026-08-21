@@ -67,14 +67,21 @@ const FPL_API = (() => {
         }
     }
 
-    // Head-to-head match results for a league (paginated endpoint returns page 1)
+    // Head-to-head match results for a league. The endpoint is paginated
+    // (~50 matches/page), so walk pages until has_next is false.
     async function getH2HMatches(leagueId) {
+        const all = [];
         try {
-            const data = await fetchJSON(`${CONFIG.API_BASE}/leagues-h2h-matches/league/${leagueId}/`);
-            return data && data.results ? data.results : [];
+            for (let page = 1; page <= 20; page++) {
+                const data = await fetchJSON(`${CONFIG.API_BASE}/leagues-h2h-matches/league/${leagueId}/?page=${page}`);
+                if (!data || !data.results || data.results.length === 0) break;
+                all.push(...data.results);
+                if (!data.has_next) break;
+            }
         } catch {
-            return [];
+            // return whatever pages we managed to fetch
         }
+        return all;
     }
 
     async function getLiveData(gw) {
