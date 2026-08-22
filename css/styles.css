@@ -3219,3 +3219,13 @@ body { background-image: none; }   /* drop legacy green/gold glows on true black
     .last-updated, .tb-refresh-lbl { display: none; }
     .topbar { padding: 10px 14px; gap: 8px; }
 }
+
+/* ---- Monthly scores matrix ---- */
+.monthly-matrix-wrap { margin-bottom: 26px; overflow-x: auto; }
+.monthly-matrix { min-width: 720px; }
+.monthly-matrix th.month-col { text-align: center; }
+.monthly-matrix th.month-col.upcoming { color: var(--text-muted); }
+.monthly-matrix .month-cell { text-align: center; font-variant-numeric: tabular-nums; }
+.monthly-matrix .month-cell.muted { color: var(--text-muted); }
+.monthly-matrix .month-win { font-weight: 700; color: var(--gold-light); background: var(--gold-glow); }
+.monthly-matrix .month-sum { text-align: center; }

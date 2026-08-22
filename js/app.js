@@ -954,12 +954,69 @@ const APP = (() => {
     function renderMonthly(container) {
         const months = computed.monthly;
 
+        // ---- Consolidated monthly scores matrix (managers × months) ----
+        const byEntry = {};
+        for (const m of months) {
+            for (const p of m.playerScores) {
+                if (!byEntry[p.entry]) byEntry[p.entry] = { entry: p.entry, playerName: p.playerName, scores: {}, wins: 0, sum: 0 };
+                byEntry[p.entry].scores[m.month] = p.total;
+            }
+            if (m.isComplete) for (const w of m.winners) { if (byEntry[w.entry]) byEntry[w.entry].wins++; }
+        }
+        // A month is "active" if it has finished GWs, or it holds the current live GW
+        // (FPL phase standings carry live provisional totals for the current month).
+        const currentGW = appData.currentGW;
+        const isActive = m => m.isStarted || m.gws.includes(currentGW);
+
+        // Leading / winning cell per active month (for highlight)
+        const leadCell = new Set();
+        for (const m of months) {
+            if (!isActive(m)) continue;
+            if (m.isComplete) { for (const w of m.winners) leadCell.add(m.month + '-' + w.entry); }
+            else if (m.playerScores[0]) leadCell.add(m.month + '-' + m.playerScores[0].entry);
+        }
+        const matrixRows = Object.values(byEntry).map(r => {
+            r.sum = months.reduce((s, m) => s + (isActive(m) && r.scores[m.month] != null ? r.scores[m.month] : 0), 0);
+            return r;
+        }).sort((a, b) => (b.wins - a.wins) || (b.sum - a.sum));
+
         let html = `
         <div class="section-header">
             <h2>Monthly Prize — $${CONFIG.PRIZES.MONTHLY}/month</h2>
             <p class="section-sub">Top performer each calendar month (a GW belongs to the month its deadline falls in). Click a month to see all players.</p>
-        </div>
-        <div class="monthly-grid">`;
+        </div>`;
+
+        html += `
+        <div class="table-container monthly-matrix-wrap">
+            <table class="data-table monthly-matrix">
+                <thead>
+                    <tr>
+                        <th class="col-rank">#</th>
+                        <th>Manager</th>
+                        ${months.map(m => `<th class="month-col ${isActive(m) ? '' : 'upcoming'}">${m.month.slice(0, 3)}</th>`).join('')}
+                        <th>Pts</th>
+                        <th>Wins</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${matrixRows.map((r, i) => `
+                    <tr>
+                        <td class="col-rank">${i + 1}</td>
+                        <td><strong>${r.playerName}</strong></td>
+                        ${months.map(m => {
+                            if (!isActive(m)) return `<td class="month-cell muted">—</td>`;
+                            const lead = leadCell.has(m.month + '-' + r.entry);
+                            const v = r.scores[m.month];
+                            return `<td class="month-cell ${lead ? 'month-win' : ''}">${v != null ? v : 0}</td>`;
+                        }).join('')}
+                        <td class="month-sum"><strong>${r.sum}</strong></td>
+                        <td>${r.wins > 0 ? `<strong>${r.wins}</strong>` : '0'}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>`;
+
+        html += `<div class="monthly-grid">`;
 
         for (const m of months) {
             const statusClass = m.isComplete ? 'complete' : (m.isStarted ? 'in-progress' : 'upcoming');
