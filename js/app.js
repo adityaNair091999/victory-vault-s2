@@ -393,6 +393,30 @@ const APP = (() => {
             </div>
         </section>`;
 
+        // Champions League table (standings only — fixtures live on the CL tab)
+        if (ch.hasData) {
+            const chTop = (ch.table || []).slice(0, 10);
+            html += `
+            <section>
+                <div class="cc-head"><h2>Champions League Table</h2><span class="cc-hint">Top ${ch.advance} advance · GW${ch.leaguePhaseStart}–${ch.leaguePhaseEnd}</span></div>
+                <div class="cc-card cc-tablewrap">
+                    <table class="cc-tbl num">
+                        <thead><tr><th>#</th><th class="cc-team">Manager</th><th class="cc-team">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr></thead>
+                        <tbody>
+                            ${chTop.map(r => `
+                            <tr class="${r.rank <= ch.advance ? 'qual' : ''}">
+                                <td class="cc-rk">${r.rank}</td>
+                                <td class="cc-team">${r.playerName}</td>
+                                <td class="cc-team cc-dim">${r.entryName}</td>
+                                <td>${r.played || 0}</td><td>${r.won || 0}</td><td>${r.drawn || 0}</td><td>${r.lost || 0}</td>
+                                <td class="cc-ptc">${r.h2hPoints || 0}</td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </section>`;
+        }
+
         html += `</div>`;
         container.innerHTML = html;
 
