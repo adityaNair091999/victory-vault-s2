@@ -742,7 +742,8 @@ body {
 
 /* ---- Tables ---- */
 .table-container {
-    overflow-x: auto;
+    overflow: auto;
+    max-height: 560px;
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
     background: var(--bg-card);
@@ -755,6 +756,14 @@ body {
 }
 
 .data-table thead {
+    background: var(--bg-elevated);
+}
+
+/* Keep column headers visible while a tall table scrolls */
+.data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     background: var(--bg-elevated);
 }
 
@@ -957,6 +966,10 @@ body {
     background: var(--bg-elevated);
     border-radius: 2px;
 }
+
+/* Tall per-month lists scroll with a pinned header */
+.monthly-expanded { max-height: 360px; overflow-y: auto; }
+.mini-table thead th { position: sticky; top: 0; z-index: 1; background: var(--bg-card); }
 
 .mini-table {
     width: 100%;
