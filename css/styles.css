@@ -3074,9 +3074,10 @@ body {
 .cc-dash { color: var(--ink-faint); }
 .cc-vs { font-family: "DM Mono", monospace; font-size: 10px; color: var(--ink-faint); }
 
-.cc-tablewrap { padding: 6px 12px; overflow-x: auto; }
+.cc-tablewrap { padding: 0 12px; overflow: auto; max-height: 380px; }
 .cc-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-.cc-tbl th { font-family: "DM Mono", monospace; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; font-size: 10px; color: var(--ink-faint); text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+.cc-tbl thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.cc-tbl th { font-family: "DM Mono", monospace; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; font-size: 10px; color: var(--ink-faint); text-align: right; padding: 9px 8px 7px; border-bottom: 1px solid var(--line); }
 .cc-tbl th:nth-child(-n+2), .cc-tbl td:nth-child(-n+2) { text-align: left; }
 .cc-tbl td { padding: 8px; border-bottom: 1px solid var(--line-soft); }
 .cc-tbl tr:last-child td { border-bottom: 0; }
