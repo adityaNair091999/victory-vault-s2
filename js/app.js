@@ -395,7 +395,7 @@ const APP = (() => {
 
         // Champions League table (standings only — fixtures live on the CL tab)
         if (ch.hasData) {
-            const chTop = (ch.table || []).slice(0, 10);
+            const chTop = ch.table || [];
             html += `
             <section>
                 <div class="cc-head"><h2>Champions League Table</h2><span class="cc-hint">Top ${ch.advance} advance · GW${ch.leaguePhaseStart}–${ch.leaguePhaseEnd}</span></div>
