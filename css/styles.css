@@ -5,8 +5,8 @@
 /* ---- CSS Custom Properties ---- */
 :root {
     /* Backgrounds */
-    --bg-primary: #0a0e17;
-    --bg-secondary: #111827;
+    --bg-primary: #000000;
+    --bg-secondary: #0b0e0d;
     --bg-card: #1a1f2e;
     --bg-card-hover: #1e2538;
     --bg-elevated: #222839;
@@ -2954,18 +2954,18 @@ body {
    New design system; other tabs unaffected for now.
    ============================================================ */
 .cc {
-    --paper:     #0B110F;
-    --surface:   #121A16;
-    --surface-2: #1A241F;
-    --inset:     #0E1613;
+    --paper:     #000000;
+    --surface:   #0C0F0E;
+    --surface-2: #151A18;
+    --inset:     #080B0A;
     --ink:       #E9F1EB;
     --ink-soft:  #96A49B;
     --ink-faint: #61706A;
     --line:      rgba(233,241,235,0.10);
     --line-soft: rgba(233,241,235,0.05);
-    --acc:       #FF3D71;
-    --acc-2:     #FF6C93;
-    --on-acc:    #1A0710;
+    --acc:       #4D82FF;
+    --acc-2:     #7CA3FF;
+    --on-acc:    #FFFFFF;
     --up:        #2FD08A;
     --warn:      #F1B42C;
     --cc-sh:     0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
@@ -2983,19 +2983,23 @@ body {
 }
 .cc-livedot.on { background: currentColor; }
 @keyframes ccpulse {
-    0%   { box-shadow: 0 0 0 0 rgba(255,61,113,.55); }
-    70%  { box-shadow: 0 0 0 7px rgba(255,61,113,0); }
-    100% { box-shadow: 0 0 0 0 rgba(255,61,113,0); }
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc) 55%, transparent); }
+    70%  { box-shadow: 0 0 0 7px color-mix(in srgb, var(--acc) 0%, transparent); }
+    100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc) 0%, transparent); }
 }
 
 /* Hero */
 .cc-hero {
     position: relative; overflow: hidden;
     border: 1px solid var(--line); border-radius: 20px; padding: 28px 30px;
-    background:
-        radial-gradient(130% 150% at 100% 0%, rgba(255,61,113,.18), transparent 55%),
-        var(--surface);
+    background: var(--surface);
     box-shadow: var(--cc-sh);
+}
+.cc-hero > * { position: relative; }
+.cc-hero .glow {
+    position: absolute; inset: -40% -10% auto auto; width: 60%; height: 180%;
+    background: radial-gradient(circle at 70% 30%, color-mix(in srgb, var(--acc) 26%, transparent), transparent 60%);
+    pointer-events: none;
 }
 .cc-hero::after {
     content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .6;
@@ -3051,7 +3055,8 @@ body {
     box-shadow: var(--cc-sh); display: flex; flex-direction: column; gap: 12px; cursor: pointer;
     transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
 }
-.cc-comp:hover { transform: translateY(-2px); box-shadow: var(--cc-sh-lg); border-color: rgba(255,61,113,.35); }
+.cc-comp:hover { border-color: color-mix(in srgb, var(--acc) 35%, var(--line)); }
+.cc.motion .cc-comp:hover { transform: translateY(-2px); box-shadow: var(--cc-sh-lg); }
 .cc-comp-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cc-comp-name { font-family: "Archivo", sans-serif; font-weight: 800; font-size: 14.5px; }
 .cc-comp-prize { font-family: "DM Mono", monospace; font-size: 12px; color: var(--ink-soft); }
@@ -3083,16 +3088,32 @@ body {
 .cc-tbl tr:last-child td { border-bottom: 0; }
 .cc-rk { font-family: "Archivo", sans-serif; font-weight: 800; color: var(--ink-faint); }
 .cc-tbl tr.qual .cc-rk { color: var(--acc); }
-.cc-tbl tr.qual { background: rgba(255,61,113,.05); }
+.cc-tbl tr.qual { background: color-mix(in srgb, var(--acc) 7%, transparent); }
 .cc-ptc { font-family: "Archivo", sans-serif; font-weight: 800; }
 .cc-tbl td.cc-team, .cc-tbl th.cc-team { text-align: left; }
 .cc-tbl td.cc-dim { color: var(--ink-soft); }
-.cc-prize { font-family: "DM Mono", monospace; font-size: 11px; color: var(--acc); background: rgba(255,61,113,.10); padding: 2px 8px; border-radius: 20px; }
+.cc-prize { font-family: "DM Mono", monospace; font-size: 11px; color: var(--acc); background: color-mix(in srgb, var(--acc) 14%, transparent); padding: 2px 8px; border-radius: 20px; }
 .cc-dimdash { color: var(--ink-faint); }
 
 .cc-note { font-size: 12px; color: var(--ink-soft); background: var(--inset); border: 1px dashed var(--line); border-radius: 12px; padding: 11px 13px; }
 
+/* ---- Motion (only when .cc.motion) ---- */
+.cc.motion .glow { animation: ccdrift 9s ease-in-out infinite alternate; }
+@keyframes ccdrift { from { transform: translate(0,0) scale(1); } to { transform: translate(-8%, 6%) scale(1.12); } }
+.cc.motion > section { animation: ccrise .55s cubic-bezier(.2,.7,.2,1) both; }
+.cc.motion > section:nth-child(1) { animation-delay: .02s; }
+.cc.motion > section:nth-child(2) { animation-delay: .09s; }
+.cc.motion > section:nth-child(3) { animation-delay: .16s; }
+.cc.motion > section:nth-child(4) { animation-delay: .23s; }
+.cc.motion > section:nth-child(5) { animation-delay: .30s; }
+@keyframes ccrise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
 @media (max-width: 900px) {
     .cc-now, .cc-bento, .cc-split { grid-template-columns: 1fr; }
 }
-@media (prefers-reduced-motion: reduce) { .cc-livedot { animation: none; } .cc-comp { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+    .cc-livedot { animation: none; }
+    .cc-comp { transition: none; }
+    .cc.motion .glow { animation: none; }
+    .cc.motion > section { animation: none; }
+}

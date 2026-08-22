@@ -281,18 +281,19 @@ const APP = (() => {
         const chTop = (ch.table || []).slice(0, 10);
 
         // ============ RENDER ============
-        let html = `<div class="cc">`;
+        let html = `<div class="cc motion">`;
 
         // Hero
         html += `
         <section class="cc-hero">
+            <div class="glow"></div>
             <div class="cc-hero-eyebrow">${isLiveGW ? '<span class="cc-livedot"></span> Live' : 'Season'} · 2026/27 · Gameweek ${gw}</div>
             <h1 class="cc-hero-title">The race for $${totalPool.toLocaleString()} is on.</h1>
             <div class="cc-hero-row">
                 <div class="cc-hstat"><span class="cc-k">Overall Leader</span><span class="cc-v">${s[0]?.playerName || '—'} <small>· ${s[0]?.total || 0} pts</small></span></div>
                 <div class="cc-hstat"><span class="cc-k">Live GW Leader</span><span class="cc-v num">${liveLeader?.playerName || '—'} <small>· ${liveLeader?.eventTotal || 0}</small></span></div>
                 <div class="cc-hstat"><span class="cc-k">Gameweek</span><span class="cc-v num">${gw} <small>/ ${totalGWs}</small></span></div>
-                <div class="cc-hstat"><span class="cc-k">Prize Pool</span><span class="cc-v num">$${totalPool.toLocaleString()}</span></div>
+                <div class="cc-hstat"><span class="cc-k">Prize Pool</span><span class="cc-v num">$<span data-count="${totalPool}" data-comma="1">${totalPool.toLocaleString()}</span></span></div>
             </div>
         </section>`;
 
@@ -307,7 +308,7 @@ const APP = (() => {
                         <div class="cc-lead-name">${liveLeader?.playerName || '—'}</div>
                         <div class="cc-lead-team">${liveLeader?.entryName || ''}</div>
                     </div>
-                    <div class="cc-lead-score num">${liveLeader?.eventTotal || 0} <small>pts</small></div>
+                    <div class="cc-lead-score num"><span data-count="${liveLeader?.eventTotal || 0}">${liveLeader?.eventTotal || 0}</span> <small>pts</small></div>
                 </div>
                 <div class="cc-card cc-mini">
                     <span class="cc-k">Next Deadline</span>
@@ -390,6 +391,32 @@ const APP = (() => {
         // Bento cards navigate to their tab
         container.querySelectorAll('.cc-comp[data-tab]').forEach(el => {
             el.addEventListener('click', () => { const t = el.dataset.tab; if (t) switchTab(t); });
+        });
+
+        // Count-up the headline numbers (skips if the user prefers reduced motion)
+        ccCountUp(container);
+    }
+
+    // Animate [data-count] elements up to their target value. The markup already
+    // contains the final value, so we only ever touch it inside requestAnimationFrame —
+    // if rAF never runs (hidden tab / reduced motion) the real value stays put.
+    function ccCountUp(root) {
+        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce) return;
+        root.querySelectorAll('[data-count]').forEach(el => {
+            const target = +el.dataset.count || 0;
+            if (target === 0) return;
+            const comma = el.dataset.comma === '1';
+            const fmt = n => { n = Math.round(n); return comma ? n.toLocaleString() : String(n); };
+            const dur = 850;
+            let start = null;
+            function tick(now) {
+                if (start === null) start = now;
+                const t = Math.min(1, (now - start) / dur);
+                el.textContent = fmt(target * (1 - Math.pow(1 - t, 3)));
+                if (t < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
         });
     }
 
