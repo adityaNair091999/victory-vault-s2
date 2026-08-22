@@ -177,150 +177,216 @@ const APP = (() => {
         const wc = computed.worldcup;
         const h = computed.highestGW;
 
-        let html = `<div class="overview-grid">`;
+        const events = appData.bootstrap.events || [];
+        const gw = appData.currentGW;
+        const totalGWs = events.length || 38;
+        const curEvent = events.find(e => e.id === gw);
+        const isLiveGW = curEvent && !curEvent.finished;
 
-        // Season leader card
-        html += `
-        <div class="overview-card card-gold">
-            <div class="card-header">
-                <span class="card-icon">🏆</span>
-                <h3>Season Standings</h3>
-            </div>
-            <div class="card-body">
-                <div class="leader-showcase">
-                    <span class="trophy-emoji">🥇</span>
-                    <div class="leader-info">
-                        <span class="leader-name">${s[0]?.playerName || '—'}</span>
-                        <span class="leader-detail">${s[0]?.entryName || ''} · ${s[0]?.total || 0} pts</span>
-                    </div>
-                    <span class="leader-prize">$${CONFIG.PRIZES.SEASON[1]}</span>
-                </div>
-                <div class="runner-ups">
-                    <div class="runner-up"><span class="trophy-emoji small">🥈</span> ${s[1]?.playerName || '—'} <span class="pts">${s[1]?.total || 0} pts</span></div>
-                    <div class="runner-up"><span class="trophy-emoji small">🥉</span> ${s[2]?.playerName || '—'} <span class="pts">${s[2]?.total || 0} pts</span></div>
-                </div>
-            </div>
-        </div>`;
+        // Live GW leader + average from provisional event_total
+        const byEvent = [...appData.players].sort((a, b) => (b.eventTotal || 0) - (a.eventTotal || 0));
+        const liveLeader = byEvent[0];
+        const liveAvg = appData.players.length
+            ? Math.round(appData.players.reduce((x, p) => x + (p.eventTotal || 0), 0) / appData.players.length)
+            : 0;
 
-        // Monthly prize card
-        const currentMonth = m.find(mo => mo.isStarted && !mo.isComplete);
-        const lastCompletedMonth = [...m].reverse().find(mo => mo.isComplete);
-        html += `
-        <div class="overview-card card-green">
-            <div class="card-header">
-                <span class="card-icon">📅</span>
-                <h3>Monthly Prize</h3>
-            </div>
-            <div class="card-body">
-                ${lastCompletedMonth ? `
-                <div class="mini-stat">
-                    <span class="mini-label">Latest Winner (${lastCompletedMonth.month})</span>
-                    <span class="mini-value">${lastCompletedMonth.winners.map(w => w.playerName).join(', ') || '—'}</span>
-                    <span class="mini-detail">${lastCompletedMonth.winners[0]?.total || 0} pts · $${lastCompletedMonth.prizePerWinner}</span>
-                </div>` : ''}
-                ${currentMonth ? `
-                <div class="mini-stat">
-                    <span class="mini-label">In Progress: ${currentMonth.month}</span>
-                    <span class="mini-value">${currentMonth.playerScores[0]?.playerName || '—'}</span>
-                    <span class="mini-detail">Leading with ${currentMonth.playerScores[0]?.total || 0} pts</span>
-                </div>` : ''}
-                <div class="mini-stat muted"><span class="mini-label">$${CONFIG.PRIZES.MONTHLY}/month · ${m.filter(mo => mo.isComplete).length}/${m.length} months decided</span></div>
-            </div>
-        </div>`;
+        // Next deadline countdown
+        const now = Date.now();
+        const upcoming = events
+            .filter(e => e.deadline_time && new Date(e.deadline_time).getTime() > now)
+            .sort((a, b) => new Date(a.deadline_time) - new Date(b.deadline_time))[0];
+        let deadlineStr = '—', deadlineSub = 'Season complete';
+        if (upcoming) {
+            const diff = new Date(upcoming.deadline_time).getTime() - now;
+            const dd = Math.floor(diff / 86400000);
+            const hh = Math.floor((diff % 86400000) / 3600000);
+            deadlineStr = dd > 0 ? `${dd}d ${hh}h` : `${hh}h`;
+            deadlineSub = `GW${upcoming.id} · ${new Date(upcoming.deadline_time).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`;
+        }
 
-        // LMS card
-        html += `
-        <div class="overview-card card-red">
-            <div class="card-header">
-                <span class="card-icon">💀</span>
-                <h3>Last Man Standing</h3>
-            </div>
-            <div class="card-body">
-                <div class="mini-stat">
-                    <span class="mini-label">GW${l.startGW}–${l.endGW}</span>
-                    <span class="mini-value">${l.winner ? '🏆 ' + l.winner.playerName : l.alive.length + ' players still alive'}</span>
-                    <span class="mini-detail">${l.eliminations.length} eliminated · $${l.prizeWinner} winner / $${l.prizeRunner} runner-up</span>
-                </div>
-            </div>
-        </div>`;
+        const totalPool =
+            CONFIG.PRIZES.SEASON[1] + CONFIG.PRIZES.SEASON[2] + CONFIG.PRIZES.SEASON[3] +
+            Object.keys(CONFIG.MONTHLY_PHASES).length * CONFIG.PRIZES.MONTHLY +
+            CONFIG.PRIZES.LMS.WINNER + CONFIG.PRIZES.LMS.RUNNER +
+            CONFIG.PRIZES.CHAMPIONS.WINNER + CONFIG.PRIZES.CHAMPIONS.RUNNER +
+            CONFIG.PRIZES.WORLDCUP.WINNER + CONFIG.PRIZES.WORLDCUP.RUNNER +
+            CONFIG.PRIZES.CUP + CONFIG.PRIZES.HIGHEST_GW;
 
-        // Champions League card
+        const initials = name => (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        const monthsDecided = m.filter(mo => mo.isComplete).length;
         const chLeader = ch.table && ch.table[0];
-        html += `
-        <div class="overview-card card-blue">
-            <div class="card-header">
-                <span class="card-icon">🏆</span>
-                <h3>Champions League</h3>
-            </div>
-            <div class="card-body">
-                <div class="mini-stat">
-                    <span class="mini-label">${ch.leaguePhaseDone ? 'Knockouts · top ' + ch.advance : 'League phase · GW' + ch.leaguePhaseStart + '–' + ch.leaguePhaseEnd}</span>
-                    <span class="mini-value">${chLeader ? chLeader.playerName : 'Awaiting results'}</span>
-                    <span class="mini-detail">${chLeader ? chLeader.h2hPoints + ' H2H pts' : 'H2H not started'} · $${ch.prizeWinner} / $${ch.prizeRunner}</span>
-                </div>
-            </div>
-        </div>`;
+        const chInLeaguePhase = gw <= ch.leaguePhaseEnd;
 
-        // World Cup card
-        html += `
-        <div class="overview-card card-green">
-            <div class="card-header">
-                <span class="card-icon">🌍</span>
-                <h3>World Cup</h3>
-            </div>
-            <div class="card-body">
-                <div class="mini-stat">
-                    <span class="mini-label">Group stage · GW${CONFIG.WORLDCUP.GROUPS.start}–${CONFIG.WORLDCUP.GROUPS.end}</span>
-                    <span class="mini-value">${wc.status === 'awaiting_draw' ? 'Groups drawn at GW20' : (wc.groupsDone ? 'Knockouts underway' : 'Groups in progress')}</span>
-                    <span class="mini-detail">3 groups of 10 · $${wc.prizeWinner} / $${wc.prizeRunner}</span>
-                </div>
-            </div>
-        </div>`;
+        // ---- Bento competition cards ----
+        const bento = [
+            {
+                name: 'Classic League', prize: '$450',
+                lead: s[0] ? `<b>${s[0].playerName}</b> leads` : 'Awaiting scores',
+                sub: '250 / 125 / 75 · GW1–38',
+                chip: isLiveGW ? '<span class="cc-chip live">Live</span>' : '',
+            },
+            {
+                name: 'Champions League', prize: '$225',
+                lead: ch.leaguePhaseDone ? `<b>Knockouts</b>` : `<b>League phase</b>`,
+                sub: `GW${ch.leaguePhaseStart}–${ch.leaguePhaseEnd} · top ${ch.advance} advance`,
+                chip: (isLiveGW && chInLeaguePhase) ? '<span class="cc-chip live">Live H2H</span>' : '<span class="cc-chip mute">GW1–15</span>',
+            },
+            {
+                name: 'Last Man Standing', prize: '$225',
+                lead: l.winner ? `<b>🏆 ${l.winner.playerName}</b>` : `<b>${l.alive.length} alive</b>`,
+                sub: `GW${l.startGW}–${l.endGW} · ${l.eliminations.length} eliminated`,
+                chip: `<span class="cc-chip mute">${l.eliminations.length} out</span>`,
+            },
+            {
+                name: 'World Cup', prize: '$225',
+                lead: wc.status === 'awaiting_draw' ? `<b>Groups drawn GW20</b>` : (wc.groupsDone ? `<b>Knockouts</b>` : `<b>Group stage</b>`),
+                sub: `3 groups · KO GW${CONFIG.WORLDCUP.KO_ROUNDS[0]}–${CONFIG.WORLDCUP.KO_ROUNDS[CONFIG.WORLDCUP.KO_ROUNDS.length - 1]}`,
+                chip: '<span class="cc-chip warn">Upcoming</span>',
+            },
+            {
+                name: 'Monthly Prize', prize: '$250',
+                lead: `<b>${(m.find(mo => mo.isStarted && !mo.isComplete) || {}).month || 'August'} open</b>`,
+                sub: `$${CONFIG.PRIZES.MONTHLY} × ${m.length} months`,
+                chip: `<span class="cc-chip mute">${monthsDecided} / ${m.length} paid</span>`,
+            },
+            {
+                name: 'FA Cup', prize: '$75',
+                lead: `<b>${computed.cup.hasCup && computed.cup.rounds.length ? computed.cup.rounds.length + ' round(s)' : 'Native FPL cup'}</b>`,
+                sub: 'GW34–38 · winner takes all',
+                chip: '<span class="cc-chip mute">GW34+</span>',
+            },
+            {
+                name: 'Highest GW', prize: '$50',
+                lead: h.bestScore ? `<b>${h.winners[0].playerName}</b>` : `<b>Best single GW</b>`,
+                sub: h.bestScore ? `GW${h.winners[0].gw} · ${h.bestScore} pts` : 'Season-wide · one prize',
+                chip: `<span class="cc-chip mute">${h.bestScore || 'TBD'}</span>`,
+            },
+        ];
 
-        // Cup card
-        html += `
-        <div class="overview-card card-purple">
-            <div class="card-header">
-                <span class="card-icon">🏅</span>
-                <h3>FA Cup</h3>
-            </div>
-            <div class="card-body">
-                <div class="mini-stat">
-                    <span class="mini-value">${computed.cup.hasCup ? (computed.cup.rounds.length > 0 ? computed.cup.rounds.length + ' round(s) played' : 'Starting soon (~GW34-35)') : 'Cup not yet created'}</span>
-                    <span class="mini-detail">$${CONFIG.PRIZES.CUP} for the winner</span>
-                </div>
-            </div>
-        </div>`;
-
-        // Highest GW Score card
-        html += `
-        <div class="overview-card card-amber">
-            <div class="card-header">
-                <span class="card-icon">⚡</span>
-                <h3>Highest GW Score</h3>
-            </div>
-            <div class="card-body">
-                <div class="leader-showcase">
-                    <span class="trophy-emoji">🔥</span>
-                    <div class="leader-info">
-                        <span class="leader-name">${h.winners[0]?.playerName || '—'}</span>
-                        <span class="leader-detail">GW${h.winners[0]?.gw || '?'} · ${h.bestScore} pts</span>
+        // ---- Live CL H2H fixtures (current / latest gameweek) ----
+        let fixturesHtml = '';
+        if (ch.leagueFixtures && ch.leagueFixtures.length) {
+            const fx = ch.leagueFixtures.find(f => f.isLive)
+                || [...ch.leagueFixtures].reverse().find(f => f.isFinished)
+                || ch.leagueFixtures[0];
+            const scored = fx.isLive || fx.isFinished;
+            fixturesHtml = fx.matches.slice(0, 5).map(mm => `
+                <div class="cc-fx">
+                    <div class="cc-p"><span class="cc-dotm">${initials(mm.entry1Name)}</span><span class="cc-nm">${mm.entry1Name}</span></div>
+                    <div class="cc-fx-mid">
+                        ${fx.isLive ? '<span class="cc-fx-live">LIVE</span>' : ''}
+                        <div class="cc-fx-score">${scored ? `<span class="cc-sc">${mm.entry1Points}</span><span class="cc-dash">–</span><span class="cc-sc">${mm.entry2Points}</span>` : '<span class="cc-vs">GW' + mm.event + '</span>'}</div>
                     </div>
-                    <span class="leader-prize">$${CONFIG.PRIZES.HIGHEST_GW}</span>
+                    <div class="cc-p right"><span class="cc-nm">${mm.entry2Name}</span><span class="cc-dotm">${initials(mm.entry2Name)}</span></div>
+                </div>`).join('');
+        }
+
+        const chTop = (ch.table || []).slice(0, 10);
+
+        // ============ RENDER ============
+        let html = `<div class="cc">`;
+
+        // Hero
+        html += `
+        <section class="cc-hero">
+            <div class="cc-hero-eyebrow">${isLiveGW ? '<span class="cc-livedot"></span> Live' : 'Season'} · 2026/27 · Gameweek ${gw}</div>
+            <h1 class="cc-hero-title">The race for $${totalPool.toLocaleString()} is on.</h1>
+            <div class="cc-hero-row">
+                <div class="cc-hstat"><span class="cc-k">Overall Leader</span><span class="cc-v">${s[0]?.playerName || '—'} <small>· ${s[0]?.total || 0} pts</small></span></div>
+                <div class="cc-hstat"><span class="cc-k">Live GW Leader</span><span class="cc-v num">${liveLeader?.playerName || '—'} <small>· ${liveLeader?.eventTotal || 0}</small></span></div>
+                <div class="cc-hstat"><span class="cc-k">Gameweek</span><span class="cc-v num">${gw} <small>/ ${totalGWs}</small></span></div>
+                <div class="cc-hstat"><span class="cc-k">Prize Pool</span><span class="cc-v num">$${totalPool.toLocaleString()}</span></div>
+            </div>
+        </section>`;
+
+        // Right Now
+        html += `
+        <section>
+            <div class="cc-head"><h2>Right Now</h2><span class="cc-hint">${isLiveGW ? 'Live provisional scores — GW' + gw + ' in progress' : 'Latest standings'}</span></div>
+            <div class="cc-now">
+                <div class="cc-card cc-lead">
+                    <div>
+                        <span class="cc-chip live"><span class="cc-livedot on"></span> ${isLiveGW ? 'Live GW Leader' : 'GW Leader'}</span>
+                        <div class="cc-lead-name">${liveLeader?.playerName || '—'}</div>
+                        <div class="cc-lead-team">${liveLeader?.entryName || ''}</div>
+                    </div>
+                    <div class="cc-lead-score num">${liveLeader?.eventTotal || 0} <small>pts</small></div>
                 </div>
-                <div class="runner-ups">
-                    ${h.topScores.slice(1, 4).map((s, i) => `
-                    <div class="runner-up">#${i + 2} ${s.playerName} <span class="pts">GW${s.gw} · ${s.score} pts</span></div>`).join('')}
+                <div class="cc-card cc-mini">
+                    <span class="cc-k">League Average</span>
+                    <div class="cc-big num">${liveAvg} <small>pts</small></div>
+                    <div class="cc-sub">${appData.players.length} managers this GW</div>
+                    <div style="margin-top:auto"><span class="cc-chip up">Season leader · ${s[0]?.total || 0} pts</span></div>
+                </div>
+                <div class="cc-card cc-mini">
+                    <span class="cc-k">Next Deadline</span>
+                    <div class="cc-big num">${deadlineStr}</div>
+                    <div class="cc-sub">${deadlineSub}</div>
+                    <div style="margin-top:auto"><span class="cc-chip warn">${gw} of ${totalGWs} gameweeks</span></div>
                 </div>
             </div>
-        </div>`;
+        </section>`;
+
+        // Competitions bento
+        html += `
+        <section>
+            <div class="cc-head"><h2>Competitions</h2><span class="cc-hint">Every manager has a live prize from GW1 to GW38</span></div>
+            <div class="cc-bento">
+                ${bento.map(c => `
+                <div class="cc-comp" data-tab="${compTabId(c.name)}">
+                    <div class="cc-comp-top"><span class="cc-comp-name">${c.name}</span><span class="cc-comp-prize">${c.prize}</span></div>
+                    <div class="cc-comp-body">
+                        <div class="cc-comp-lead">${c.lead}<span>${c.sub}</span></div>
+                        ${c.chip}
+                    </div>
+                </div>`).join('')}
+            </div>
+        </section>`;
+
+        // Live split — CL fixtures + table
+        if (ch.hasData) {
+            html += `
+            <section class="cc-split">
+                <div>
+                    <div class="cc-head"><h2>Champions League · H2H</h2><span class="cc-hint">${isLiveGW && chInLeaguePhase ? 'Live scores' : 'Latest round'}</span></div>
+                    <div class="cc-fixtures">${fixturesHtml || '<div class="cc-note">Fixtures appear once the H2H schedule is published.</div>'}</div>
+                    <div class="cc-note">While a GW is live, fixtures show provisional scores only — no result until the round is final.</div>
+                </div>
+                <div>
+                    <div class="cc-head"><h2>CL Table</h2><span class="cc-hint">Top ${ch.advance} advance</span></div>
+                    <div class="cc-card cc-tablewrap">
+                        <table class="cc-tbl num">
+                            <thead><tr><th>#</th><th>Manager</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr></thead>
+                            <tbody>
+                                ${chTop.map(r => `
+                                <tr class="${r.rank <= ch.advance ? 'qual' : ''}">
+                                    <td class="cc-rk">${r.rank}</td><td>${r.playerName}</td>
+                                    <td>${r.played || 0}</td><td>${r.won || 0}</td><td>${r.drawn || 0}</td><td>${r.lost || 0}</td>
+                                    <td class="cc-ptc">${r.h2hPoints || 0}</td>
+                                </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>`;
+        }
 
         html += `</div>`;
-
-
-
-
         container.innerHTML = html;
+
+        // Bento cards navigate to their tab
+        container.querySelectorAll('.cc-comp[data-tab]').forEach(el => {
+            el.addEventListener('click', () => { const t = el.dataset.tab; if (t) switchTab(t); });
+        });
+    }
+
+    // Map a competition display name to its tab id (for bento navigation).
+    function compTabId(name) {
+        const map = {
+            'Classic League': 'standings', 'Champions League': 'champions', 'Last Man Standing': 'lms',
+            'World Cup': 'worldcup', 'Monthly Prize': 'monthly', 'FA Cup': 'cup', 'Highest GW': 'highestgw',
+        };
+        return map[name] || '';
     }
 
     // --------------------------------------------------------
