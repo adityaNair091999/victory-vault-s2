@@ -16,18 +16,71 @@ const APP = (() => {
         await refreshData();
     }
 
+    // Total prize pool across every competition (single source of truth).
+    function totalPrizePool() {
+        return CONFIG.PRIZES.SEASON[1] + CONFIG.PRIZES.SEASON[2] + CONFIG.PRIZES.SEASON[3] +
+            Object.keys(CONFIG.MONTHLY_PHASES).length * CONFIG.PRIZES.MONTHLY +
+            CONFIG.PRIZES.LMS.WINNER + CONFIG.PRIZES.LMS.RUNNER +
+            CONFIG.PRIZES.CHAMPIONS.WINNER + CONFIG.PRIZES.CHAMPIONS.RUNNER +
+            CONFIG.PRIZES.WORLDCUP.WINNER + CONFIG.PRIZES.WORLDCUP.RUNNER +
+            CONFIG.PRIZES.CUP + CONFIG.PRIZES.HIGHEST_GW;
+    }
+
     function setupTabs() {
-        const tabBar = document.getElementById('tab-bar');
-        tabBar.innerHTML = '';
-        for (const tab of CONFIG.TABS) {
-            const btn = document.createElement('button');
-            btn.className = `tab-btn ${tab.id === activeTab ? 'active' : ''}`;
-            btn.dataset.tab = tab.id;
-            btn.innerHTML = `<span class="tab-icon">${tab.icon}</span><span class="tab-label">${tab.label}</span>`;
-            btn.addEventListener('click', () => switchTab(tab.id));
-            tabBar.appendChild(btn);
+        const nav = document.getElementById('sidebar-nav');
+        if (!nav) return;
+        nav.innerHTML = '';
+
+        const groups = {};
+        for (const tab of CONFIG.TABS) (groups[tab.group] = groups[tab.group] || []).push(tab);
+        const order = CONFIG.NAV_GROUPS || Object.keys(groups);
+
+        for (const g of order) {
+            if (!groups[g]) continue;
+            const section = document.createElement('div');
+            section.className = 'nav-group';
+            section.innerHTML = `<div class="nav-group-label">${g}</div>`;
+            for (const tab of groups[g]) {
+                const btn = document.createElement('button');
+                btn.className = `nav-item ${tab.id === activeTab ? 'active' : ''}`;
+                btn.dataset.tab = tab.id;
+                btn.innerHTML = `<span class="nav-ic">${tab.icon}</span><span class="nav-lbl">${tab.label}</span>`;
+                btn.addEventListener('click', () => switchTab(tab.id));
+                section.appendChild(btn);
+            }
+            nav.appendChild(section);
         }
-        setupTabScrollArrows();
+
+        const pool = document.getElementById('pool-value');
+        if (pool) pool.textContent = '$' + totalPrizePool().toLocaleString();
+
+        setupNavToggle();
+        updateTopbarTitle();
+    }
+
+    function updateTopbarTitle() {
+        const tab = CONFIG.TABS.find(t => t.id === activeTab);
+        const el = document.getElementById('topbar-title');
+        if (el && tab) el.textContent = tab.label;
+    }
+
+    function closeSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const scrim = document.getElementById('sidebar-scrim');
+        if (sidebar) sidebar.classList.remove('open');
+        if (scrim) scrim.classList.remove('show');
+    }
+
+    function setupNavToggle() {
+        const toggle = document.getElementById('nav-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const scrim = document.getElementById('sidebar-scrim');
+        if (!toggle || !sidebar) return;
+        toggle.onclick = () => {
+            const open = sidebar.classList.toggle('open');
+            if (scrim) scrim.classList.toggle('show', open);
+        };
+        if (scrim) scrim.onclick = closeSidebar;
     }
 
     function setupTabScrollArrows() {
@@ -59,9 +112,11 @@ const APP = (() => {
 
     function switchTab(tabId) {
         activeTab = tabId;
-        document.querySelectorAll('.tab-btn').forEach(b => {
+        document.querySelectorAll('.nav-item').forEach(b => {
             b.classList.toggle('active', b.dataset.tab === tabId);
         });
+        updateTopbarTitle();
+        closeSidebar();
         renderActiveTab();
     }
 
@@ -121,9 +176,10 @@ const APP = (() => {
             if (!defaultTabSet) {
                 defaultTabSet = true;
                 activeTab = 'overview';
-                document.querySelectorAll('.tab-btn').forEach(b => {
+                document.querySelectorAll('.nav-item').forEach(b => {
                     b.classList.toggle('active', b.dataset.tab === activeTab);
                 });
+                updateTopbarTitle();
             }
 
             renderActiveTab();
@@ -177,150 +233,232 @@ const APP = (() => {
         const wc = computed.worldcup;
         const h = computed.highestGW;
 
-        let html = `<div class="overview-grid">`;
+        const events = appData.bootstrap.events || [];
+        const gw = appData.currentGW;
+        const totalGWs = events.length || 38;
+        const curEvent = events.find(e => e.id === gw);
+        const isLiveGW = curEvent && !curEvent.finished;
 
-        // Season leader card
-        html += `
-        <div class="overview-card card-gold">
-            <div class="card-header">
-                <span class="card-icon">🏆</span>
-                <h3>Season Standings</h3>
-            </div>
-            <div class="card-body">
-                <div class="leader-showcase">
-                    <span class="trophy-emoji">🥇</span>
-                    <div class="leader-info">
-                        <span class="leader-name">${s[0]?.playerName || '—'}</span>
-                        <span class="leader-detail">${s[0]?.entryName || ''} · ${s[0]?.total || 0} pts</span>
-                    </div>
-                    <span class="leader-prize">$${CONFIG.PRIZES.SEASON[1]}</span>
-                </div>
-                <div class="runner-ups">
-                    <div class="runner-up"><span class="trophy-emoji small">🥈</span> ${s[1]?.playerName || '—'} <span class="pts">${s[1]?.total || 0} pts</span></div>
-                    <div class="runner-up"><span class="trophy-emoji small">🥉</span> ${s[2]?.playerName || '—'} <span class="pts">${s[2]?.total || 0} pts</span></div>
-                </div>
-            </div>
-        </div>`;
+        // Live GW leader + average from provisional event_total
+        const byEvent = [...appData.players].sort((a, b) => (b.eventTotal || 0) - (a.eventTotal || 0));
+        const liveLeader = byEvent[0];
 
-        // Monthly prize card
-        const currentMonth = m.find(mo => mo.isStarted && !mo.isComplete);
-        const lastCompletedMonth = [...m].reverse().find(mo => mo.isComplete);
-        html += `
-        <div class="overview-card card-green">
-            <div class="card-header">
-                <span class="card-icon">📅</span>
-                <h3>Monthly Prize</h3>
-            </div>
-            <div class="card-body">
-                ${lastCompletedMonth ? `
-                <div class="mini-stat">
-                    <span class="mini-label">Latest Winner (${lastCompletedMonth.month})</span>
-                    <span class="mini-value">${lastCompletedMonth.winners.map(w => w.playerName).join(', ') || '—'}</span>
-                    <span class="mini-detail">${lastCompletedMonth.winners[0]?.total || 0} pts · $${lastCompletedMonth.prizePerWinner}</span>
-                </div>` : ''}
-                ${currentMonth ? `
-                <div class="mini-stat">
-                    <span class="mini-label">In Progress: ${currentMonth.month}</span>
-                    <span class="mini-value">${currentMonth.playerScores[0]?.playerName || '—'}</span>
-                    <span class="mini-detail">Leading with ${currentMonth.playerScores[0]?.total || 0} pts</span>
-                </div>` : ''}
-                <div class="mini-stat muted"><span class="mini-label">$${CONFIG.PRIZES.MONTHLY}/month · ${m.filter(mo => mo.isComplete).length}/${m.length} months decided</span></div>
-            </div>
-        </div>`;
+        // Next deadline countdown
+        const now = Date.now();
+        const upcoming = events
+            .filter(e => e.deadline_time && new Date(e.deadline_time).getTime() > now)
+            .sort((a, b) => new Date(a.deadline_time) - new Date(b.deadline_time))[0];
+        let deadlineStr = '—', deadlineSub = 'Season complete';
+        if (upcoming) {
+            const diff = new Date(upcoming.deadline_time).getTime() - now;
+            const dd = Math.floor(diff / 86400000);
+            const hh = Math.floor((diff % 86400000) / 3600000);
+            deadlineStr = dd > 0 ? `${dd}d ${hh}h` : `${hh}h`;
+            deadlineSub = `GW${upcoming.id} · ${new Date(upcoming.deadline_time).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`;
+        }
 
-        // LMS card
-        html += `
-        <div class="overview-card card-red">
-            <div class="card-header">
-                <span class="card-icon">💀</span>
-                <h3>Last Man Standing</h3>
-            </div>
-            <div class="card-body">
-                <div class="mini-stat">
-                    <span class="mini-label">GW${l.startGW}–${l.endGW}</span>
-                    <span class="mini-value">${l.winner ? '🏆 ' + l.winner.playerName : l.alive.length + ' players still alive'}</span>
-                    <span class="mini-detail">${l.eliminations.length} eliminated · $${l.prizeWinner} winner / $${l.prizeRunner} runner-up</span>
-                </div>
-            </div>
-        </div>`;
+        const totalPool =
+            CONFIG.PRIZES.SEASON[1] + CONFIG.PRIZES.SEASON[2] + CONFIG.PRIZES.SEASON[3] +
+            Object.keys(CONFIG.MONTHLY_PHASES).length * CONFIG.PRIZES.MONTHLY +
+            CONFIG.PRIZES.LMS.WINNER + CONFIG.PRIZES.LMS.RUNNER +
+            CONFIG.PRIZES.CHAMPIONS.WINNER + CONFIG.PRIZES.CHAMPIONS.RUNNER +
+            CONFIG.PRIZES.WORLDCUP.WINNER + CONFIG.PRIZES.WORLDCUP.RUNNER +
+            CONFIG.PRIZES.CUP + CONFIG.PRIZES.HIGHEST_GW;
 
-        // Champions League card
+        const initials = name => (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        const monthsDecided = m.filter(mo => mo.isComplete).length;
         const chLeader = ch.table && ch.table[0];
-        html += `
-        <div class="overview-card card-blue">
-            <div class="card-header">
-                <span class="card-icon">🏆</span>
-                <h3>Champions League</h3>
-            </div>
-            <div class="card-body">
-                <div class="mini-stat">
-                    <span class="mini-label">${ch.leaguePhaseDone ? 'Knockouts · top ' + ch.advance : 'League phase · GW' + ch.leaguePhaseStart + '–' + ch.leaguePhaseEnd}</span>
-                    <span class="mini-value">${chLeader ? chLeader.playerName : 'Awaiting results'}</span>
-                    <span class="mini-detail">${chLeader ? chLeader.h2hPoints + ' H2H pts' : 'H2H not started'} · $${ch.prizeWinner} / $${ch.prizeRunner}</span>
-                </div>
-            </div>
-        </div>`;
+        const chInLeaguePhase = gw <= ch.leaguePhaseEnd;
 
-        // World Cup card
-        html += `
-        <div class="overview-card card-green">
-            <div class="card-header">
-                <span class="card-icon">🌍</span>
-                <h3>World Cup</h3>
-            </div>
-            <div class="card-body">
-                <div class="mini-stat">
-                    <span class="mini-label">Group stage · GW${CONFIG.WORLDCUP.GROUPS.start}–${CONFIG.WORLDCUP.GROUPS.end}</span>
-                    <span class="mini-value">${wc.status === 'awaiting_draw' ? 'Groups drawn at GW20' : (wc.groupsDone ? 'Knockouts underway' : 'Groups in progress')}</span>
-                    <span class="mini-detail">3 groups of 10 · $${wc.prizeWinner} / $${wc.prizeRunner}</span>
-                </div>
-            </div>
-        </div>`;
+        // ---- Bento competition cards ----
+        const bento = [
+            {
+                name: 'Classic League', prize: '$450',
+                lead: s[0] ? `<b>${s[0].playerName}</b> leads` : 'Awaiting scores',
+                sub: '250 / 125 / 75 · GW1–38',
+                chip: isLiveGW ? '<span class="cc-chip live">Live</span>' : '',
+            },
+            {
+                name: 'Champions League', prize: '$225',
+                lead: ch.leaguePhaseDone ? `<b>Knockouts</b>` : `<b>League phase</b>`,
+                sub: `GW${ch.leaguePhaseStart}–${ch.leaguePhaseEnd} · top ${ch.advance} advance`,
+                chip: (isLiveGW && chInLeaguePhase) ? '<span class="cc-chip live">Live H2H</span>' : '<span class="cc-chip mute">GW1–15</span>',
+            },
+            {
+                name: 'Last Man Standing', prize: '$225',
+                lead: l.winner ? `<b>🏆 ${l.winner.playerName}</b>` : `<b>${l.alive.length} alive</b>`,
+                sub: `GW${l.startGW}–${l.endGW} · ${l.eliminations.length} eliminated`,
+                chip: `<span class="cc-chip mute">${l.eliminations.length} out</span>`,
+            },
+            {
+                name: 'World Cup', prize: '$225',
+                lead: wc.status === 'awaiting_draw' ? `<b>Groups drawn GW20</b>` : (wc.groupsDone ? `<b>Knockouts</b>` : `<b>Group stage</b>`),
+                sub: `3 groups · KO GW${CONFIG.WORLDCUP.KO_ROUNDS[0]}–${CONFIG.WORLDCUP.KO_ROUNDS[CONFIG.WORLDCUP.KO_ROUNDS.length - 1]}`,
+                chip: '<span class="cc-chip warn">Upcoming</span>',
+            },
+            {
+                name: 'Monthly Prize', prize: '$250',
+                lead: `<b>${(m.find(mo => mo.isStarted && !mo.isComplete) || {}).month || 'August'} open</b>`,
+                sub: `$${CONFIG.PRIZES.MONTHLY} × ${m.length} months`,
+                chip: `<span class="cc-chip mute">${monthsDecided} / ${m.length} paid</span>`,
+            },
+            {
+                name: 'FA Cup', prize: '$75',
+                lead: `<b>${computed.cup.hasCup && computed.cup.rounds.length ? computed.cup.rounds.length + ' round(s)' : 'Native FPL cup'}</b>`,
+                sub: 'GW34–38 · winner takes all',
+                chip: '<span class="cc-chip mute">GW34+</span>',
+            },
+            {
+                name: 'Highest GW', prize: '$50',
+                lead: h.bestScore ? `<b>${h.winners[0].playerName}</b>` : `<b>Best single GW</b>`,
+                sub: h.bestScore ? `GW${h.winners[0].gw} · ${h.bestScore} pts` : 'Season-wide · one prize',
+                chip: `<span class="cc-chip mute">${h.bestScore || 'TBD'}</span>`,
+            },
+        ];
 
-        // Cup card
-        html += `
-        <div class="overview-card card-purple">
-            <div class="card-header">
-                <span class="card-icon">🏅</span>
-                <h3>FA Cup</h3>
-            </div>
-            <div class="card-body">
-                <div class="mini-stat">
-                    <span class="mini-value">${computed.cup.hasCup ? (computed.cup.rounds.length > 0 ? computed.cup.rounds.length + ' round(s) played' : 'Starting soon (~GW34-35)') : 'Cup not yet created'}</span>
-                    <span class="mini-detail">$${CONFIG.PRIZES.CUP} for the winner</span>
-                </div>
-            </div>
-        </div>`;
+        // ============ RENDER ============
+        let html = `<div class="cc motion">`;
 
-        // Highest GW Score card
+        // Hero
         html += `
-        <div class="overview-card card-amber">
-            <div class="card-header">
-                <span class="card-icon">⚡</span>
-                <h3>Highest GW Score</h3>
+        <section class="cc-hero">
+            <div class="glow"></div>
+            <div class="cc-hero-eyebrow">${isLiveGW ? '<span class="cc-livedot"></span> Live' : 'Season'} · 2026/27 · Gameweek ${gw}</div>
+            <h1 class="cc-hero-title">The race for $${totalPool.toLocaleString()} is on.</h1>
+            <div class="cc-hero-row">
+                <div class="cc-hstat"><span class="cc-k">Overall Leader</span><span class="cc-v">${s[0]?.playerName || '—'} <small>· ${s[0]?.total || 0} pts</small></span></div>
+                <div class="cc-hstat"><span class="cc-k">Live GW Leader</span><span class="cc-v num">${liveLeader?.playerName || '—'} <small>· ${liveLeader?.eventTotal || 0}</small></span></div>
+                <div class="cc-hstat"><span class="cc-k">Gameweek</span><span class="cc-v num">${gw} <small>/ ${totalGWs}</small></span></div>
+                <div class="cc-hstat"><span class="cc-k">Prize Pool</span><span class="cc-v num">$<span data-count="${totalPool}" data-comma="1">${totalPool.toLocaleString()}</span></span></div>
             </div>
-            <div class="card-body">
-                <div class="leader-showcase">
-                    <span class="trophy-emoji">🔥</span>
-                    <div class="leader-info">
-                        <span class="leader-name">${h.winners[0]?.playerName || '—'}</span>
-                        <span class="leader-detail">GW${h.winners[0]?.gw || '?'} · ${h.bestScore} pts</span>
+        </section>`;
+
+        // Right Now
+        html += `
+        <section>
+            <div class="cc-head"><h2>Right Now</h2><span class="cc-hint">${isLiveGW ? 'Live provisional scores — GW' + gw + ' in progress' : 'Latest standings'}</span></div>
+            <div class="cc-now">
+                <div class="cc-card cc-lead">
+                    <div>
+                        <span class="cc-chip live"><span class="cc-livedot on"></span> ${isLiveGW ? 'Live GW Leader' : 'GW Leader'}</span>
+                        <div class="cc-lead-name">${liveLeader?.playerName || '—'}</div>
+                        <div class="cc-lead-team">${liveLeader?.entryName || ''}</div>
                     </div>
-                    <span class="leader-prize">$${CONFIG.PRIZES.HIGHEST_GW}</span>
+                    <div class="cc-lead-score num"><span data-count="${liveLeader?.eventTotal || 0}">${liveLeader?.eventTotal || 0}</span> <small>pts</small></div>
                 </div>
-                <div class="runner-ups">
-                    ${h.topScores.slice(1, 4).map((s, i) => `
-                    <div class="runner-up">#${i + 2} ${s.playerName} <span class="pts">GW${s.gw} · ${s.score} pts</span></div>`).join('')}
+                <div class="cc-card cc-mini">
+                    <span class="cc-k">Next Deadline</span>
+                    <div class="cc-big num">${deadlineStr}</div>
+                    <div class="cc-sub">${deadlineSub}</div>
+                    <div style="margin-top:auto"><span class="cc-chip warn">${gw} of ${totalGWs} gameweeks</span></div>
                 </div>
             </div>
-        </div>`;
+        </section>`;
+
+        // Overall standings (classic league)
+        html += `
+        <section>
+            <div class="cc-head"><h2>Overall Standings</h2><span class="cc-hint">Classic League · ${isLiveGW ? 'live GW' + gw + ' totals' : 'GW' + gw}</span></div>
+            <div class="cc-card cc-tablewrap">
+                <table class="cc-tbl num">
+                    <thead><tr><th>#</th><th class="cc-team">Manager</th><th class="cc-team">Team</th><th>GW</th><th>Total</th><th>Prize</th></tr></thead>
+                    <tbody>
+                        ${s.map(p => `
+                        <tr class="${p.rank <= 3 ? 'qual' : ''}">
+                            <td class="cc-rk">${p.rank}</td>
+                            <td class="cc-team">${p.playerName}</td>
+                            <td class="cc-team cc-dim">${p.entryName}</td>
+                            <td>${p.eventTotal || 0}</td>
+                            <td class="cc-ptc">${p.total}</td>
+                            <td>${p.prize > 0 ? `<span class="cc-prize">$${p.prize}</span>` : '<span class="cc-dimdash">—</span>'}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </section>`;
+
+        // Competitions bento
+        html += `
+        <section>
+            <div class="cc-head"><h2>Competitions</h2><span class="cc-hint">Every manager has a live prize from GW1 to GW38</span></div>
+            <div class="cc-bento">
+                ${bento.map(c => `
+                <div class="cc-comp" data-tab="${compTabId(c.name)}">
+                    <div class="cc-comp-top"><span class="cc-comp-name">${c.name}</span><span class="cc-comp-prize">${c.prize}</span></div>
+                    <div class="cc-comp-body">
+                        <div class="cc-comp-lead">${c.lead}<span>${c.sub}</span></div>
+                        ${c.chip}
+                    </div>
+                </div>`).join('')}
+            </div>
+        </section>`;
+
+        // Champions League table (standings only — fixtures live on the CL tab)
+        if (ch.hasData) {
+            const chTop = ch.table || [];
+            html += `
+            <section>
+                <div class="cc-head"><h2>Champions League Table</h2><span class="cc-hint">Top ${ch.advance} advance · GW${ch.leaguePhaseStart}–${ch.leaguePhaseEnd}</span></div>
+                <div class="cc-card cc-tablewrap">
+                    <table class="cc-tbl num">
+                        <thead><tr><th>#</th><th class="cc-team">Manager</th><th class="cc-team">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr></thead>
+                        <tbody>
+                            ${chTop.map(r => `
+                            <tr class="${r.rank <= ch.advance ? 'qual' : ''}">
+                                <td class="cc-rk">${r.rank}</td>
+                                <td class="cc-team">${r.playerName}</td>
+                                <td class="cc-team cc-dim">${r.entryName}</td>
+                                <td>${r.played || 0}</td><td>${r.won || 0}</td><td>${r.drawn || 0}</td><td>${r.lost || 0}</td>
+                                <td class="cc-ptc">${r.h2hPoints || 0}</td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </section>`;
+        }
 
         html += `</div>`;
-
-
-
-
         container.innerHTML = html;
+
+        // Bento cards navigate to their tab
+        container.querySelectorAll('.cc-comp[data-tab]').forEach(el => {
+            el.addEventListener('click', () => { const t = el.dataset.tab; if (t) switchTab(t); });
+        });
+
+        // Count-up the headline numbers (skips if the user prefers reduced motion)
+        ccCountUp(container);
+    }
+
+    // Animate [data-count] elements up to their target value. The markup already
+    // contains the final value, so we only ever touch it inside requestAnimationFrame —
+    // if rAF never runs (hidden tab / reduced motion) the real value stays put.
+    function ccCountUp(root) {
+        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce) return;
+        root.querySelectorAll('[data-count]').forEach(el => {
+            const target = +el.dataset.count || 0;
+            if (target === 0) return;
+            const comma = el.dataset.comma === '1';
+            const fmt = n => { n = Math.round(n); return comma ? n.toLocaleString() : String(n); };
+            const dur = 850;
+            let start = null;
+            function tick(now) {
+                if (start === null) start = now;
+                const t = Math.min(1, (now - start) / dur);
+                el.textContent = fmt(target * (1 - Math.pow(1 - t, 3)));
+                if (t < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        });
+    }
+
+    // Map a competition display name to its tab id (for bento navigation).
+    function compTabId(name) {
+        const map = {
+            'Classic League': 'standings', 'Champions League': 'champions', 'Last Man Standing': 'lms',
+            'World Cup': 'worldcup', 'Monthly Prize': 'monthly', 'FA Cup': 'cup', 'Highest GW': 'highestgw',
+        };
+        return map[name] || '';
     }
 
     // --------------------------------------------------------
@@ -816,12 +954,69 @@ const APP = (() => {
     function renderMonthly(container) {
         const months = computed.monthly;
 
+        // ---- Consolidated monthly scores matrix (managers × months) ----
+        const byEntry = {};
+        for (const m of months) {
+            for (const p of m.playerScores) {
+                if (!byEntry[p.entry]) byEntry[p.entry] = { entry: p.entry, playerName: p.playerName, scores: {}, wins: 0, sum: 0 };
+                byEntry[p.entry].scores[m.month] = p.total;
+            }
+            if (m.isComplete) for (const w of m.winners) { if (byEntry[w.entry]) byEntry[w.entry].wins++; }
+        }
+        // A month is "active" if it has finished GWs, or it holds the current live GW
+        // (FPL phase standings carry live provisional totals for the current month).
+        const currentGW = appData.currentGW;
+        const isActive = m => m.isStarted || m.gws.includes(currentGW);
+
+        // Leading / winning cell per active month (for highlight)
+        const leadCell = new Set();
+        for (const m of months) {
+            if (!isActive(m)) continue;
+            if (m.isComplete) { for (const w of m.winners) leadCell.add(m.month + '-' + w.entry); }
+            else if (m.playerScores[0]) leadCell.add(m.month + '-' + m.playerScores[0].entry);
+        }
+        const matrixRows = Object.values(byEntry).map(r => {
+            r.sum = months.reduce((s, m) => s + (isActive(m) && r.scores[m.month] != null ? r.scores[m.month] : 0), 0);
+            return r;
+        }).sort((a, b) => (b.wins - a.wins) || (b.sum - a.sum));
+
         let html = `
         <div class="section-header">
             <h2>Monthly Prize — $${CONFIG.PRIZES.MONTHLY}/month</h2>
             <p class="section-sub">Top performer each calendar month (a GW belongs to the month its deadline falls in). Click a month to see all players.</p>
-        </div>
-        <div class="monthly-grid">`;
+        </div>`;
+
+        html += `
+        <div class="table-container monthly-matrix-wrap">
+            <table class="data-table monthly-matrix">
+                <thead>
+                    <tr>
+                        <th class="col-rank">#</th>
+                        <th>Manager</th>
+                        ${months.map(m => `<th class="month-col ${isActive(m) ? '' : 'upcoming'}">${m.month.slice(0, 3)}</th>`).join('')}
+                        <th>Pts</th>
+                        <th>Wins</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${matrixRows.map((r, i) => `
+                    <tr>
+                        <td class="col-rank">${i + 1}</td>
+                        <td><strong>${r.playerName}</strong></td>
+                        ${months.map(m => {
+                            if (!isActive(m)) return `<td class="month-cell muted">—</td>`;
+                            const lead = leadCell.has(m.month + '-' + r.entry);
+                            const v = r.scores[m.month];
+                            return `<td class="month-cell ${lead ? 'month-win' : ''}">${v != null ? v : 0}</td>`;
+                        }).join('')}
+                        <td class="month-sum"><strong>${r.sum}</strong></td>
+                        <td>${r.wins > 0 ? `<strong>${r.wins}</strong>` : '0'}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+        </div>`;
+
+        html += `<div class="monthly-grid">`;
 
         for (const m of months) {
             const statusClass = m.isComplete ? 'complete' : (m.isStarted ? 'in-progress' : 'upcoming');
