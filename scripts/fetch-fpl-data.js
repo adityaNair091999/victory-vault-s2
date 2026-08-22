@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const LEAGUE_ID = 306358;
+const CHAMPIONS_H2H_LEAGUE_ID = 1533420;   // "Victory Vault: CL Group"
 const API_BASE = 'https://fantasy.premierleague.com/api';
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const PHASE_IDS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
@@ -65,6 +66,21 @@ async function main() {
         const data = await fetchJson(`${API_BASE}/leagues-classic/${LEAGUE_ID}/standings/?phase=${phaseId}`);
         save(`league-phase-${phaseId}.json`, data);
     }));
+
+    // 3b. Champions League — head-to-head standings + matches
+    console.log('\n[3b] Champions League (H2H)');
+    try {
+        const clStandings = await fetchJson(`${API_BASE}/leagues-h2h/${CHAMPIONS_H2H_LEAGUE_ID}/standings/`);
+        save('champions-h2h-standings.json', clStandings);
+    } catch (err) {
+        console.warn(`    WARN: champions standings — ${err.message}`);
+    }
+    try {
+        const clMatches = await fetchJson(`${API_BASE}/leagues-h2h-matches/league/${CHAMPIONS_H2H_LEAGUE_ID}/`);
+        save('champions-h2h-matches.json', clMatches);
+    } catch (err) {
+        console.warn(`    WARN: champions matches — ${err.message}`);
+    }
 
     // 4. Entry histories
     console.log('\n[4/6] Entry histories');

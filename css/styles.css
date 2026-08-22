@@ -2806,3 +2806,145 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.15);
 }
+/* ============================================================
+   Season 3 — Champions League & World Cup
+   ============================================================ */
+
+/* H2H standings table (Champions League + World Cup groups) */
+.h2h-table th,
+.h2h-table td {
+    text-align: center;
+}
+.h2h-table th:nth-child(2),
+.h2h-table td:nth-child(2),
+.h2h-table th:nth-child(3),
+.h2h-table td:nth-child(3) {
+    text-align: left;
+}
+.qualified-row {
+    background: var(--green-glow);
+}
+.qualified-row td {
+    border-bottom-color: var(--border-accent);
+}
+
+/* Knockout bracket wrapper (reuses .cup-round / .cup-match styles) */
+.cup-bracket {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.cup-tiebreak-note {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    padding-top: 4px;
+    font-style: italic;
+}
+
+/* Champion banner */
+.champion-banner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    margin-bottom: 20px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--gold-glow), rgba(16, 185, 129, 0.12));
+    border: 1px solid var(--gold);
+}
+.champion-icon {
+    font-size: 2.4rem;
+    line-height: 1;
+}
+.champion-text {
+    display: flex;
+    flex-direction: column;
+}
+.champion-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--gold-light);
+    font-weight: 700;
+}
+.champion-name {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+.champion-team {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* World Cup groups grid */
+.wc-groups-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+    margin-bottom: 8px;
+}
+.wc-group .winners-section-header {
+    margin-top: 0;
+}
+
+/* LMS single-run runner-up note */
+.lms-podium-note {
+    padding: 10px 14px;
+    margin: 4px 0 12px;
+    border-radius: 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+/* Champions League — weekly fixtures gameweek selector */
+.gw-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 4px 0 16px;
+}
+.gw-selector-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.gw-selector-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-accent);
+}
+.gw-selector-btn.active {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+}
+.gw-fixtures {
+    margin-bottom: 8px;
+}
+.cup-team.draw {
+    opacity: 0.9;
+}
+.cup-draw-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+}
