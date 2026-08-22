@@ -316,26 +316,6 @@ const APP = (() => {
             },
         ];
 
-        // ---- Live CL H2H fixtures (current / latest gameweek) ----
-        let fixturesHtml = '';
-        if (ch.leagueFixtures && ch.leagueFixtures.length) {
-            const fx = ch.leagueFixtures.find(f => f.isLive)
-                || [...ch.leagueFixtures].reverse().find(f => f.isFinished)
-                || ch.leagueFixtures[0];
-            const scored = fx.isLive || fx.isFinished;
-            fixturesHtml = fx.matches.slice(0, 5).map(mm => `
-                <div class="cc-fx">
-                    <div class="cc-p"><span class="cc-dotm">${initials(mm.entry1Name)}</span><span class="cc-nm">${mm.entry1Name}</span></div>
-                    <div class="cc-fx-mid">
-                        ${fx.isLive ? '<span class="cc-fx-live">LIVE</span>' : ''}
-                        <div class="cc-fx-score">${scored ? `<span class="cc-sc">${mm.entry1Points}</span><span class="cc-dash">–</span><span class="cc-sc">${mm.entry2Points}</span>` : '<span class="cc-vs">GW' + mm.event + '</span>'}</div>
-                    </div>
-                    <div class="cc-p right"><span class="cc-nm">${mm.entry2Name}</span><span class="cc-dotm">${initials(mm.entry2Name)}</span></div>
-                </div>`).join('');
-        }
-
-        const chTop = (ch.table || []).slice(0, 10);
-
         // ============ RENDER ============
         let html = `<div class="cc motion">`;
 
@@ -412,34 +392,6 @@ const APP = (() => {
                 </div>`).join('')}
             </div>
         </section>`;
-
-        // Live split — CL fixtures + table
-        if (ch.hasData) {
-            html += `
-            <section class="cc-split">
-                <div>
-                    <div class="cc-head"><h2>Champions League · H2H</h2><span class="cc-hint">${isLiveGW && chInLeaguePhase ? 'Live scores' : 'Latest round'}</span></div>
-                    <div class="cc-fixtures">${fixturesHtml || '<div class="cc-note">Fixtures appear once the H2H schedule is published.</div>'}</div>
-                    <div class="cc-note">While a GW is live, fixtures show provisional scores only — no result until the round is final.</div>
-                </div>
-                <div>
-                    <div class="cc-head"><h2>CL Table</h2><span class="cc-hint">Top ${ch.advance} advance</span></div>
-                    <div class="cc-card cc-tablewrap">
-                        <table class="cc-tbl num">
-                            <thead><tr><th>#</th><th>Manager</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr></thead>
-                            <tbody>
-                                ${chTop.map(r => `
-                                <tr class="${r.rank <= ch.advance ? 'qual' : ''}">
-                                    <td class="cc-rk">${r.rank}</td><td>${r.playerName}</td>
-                                    <td>${r.played || 0}</td><td>${r.won || 0}</td><td>${r.drawn || 0}</td><td>${r.lost || 0}</td>
-                                    <td class="cc-ptc">${r.h2hPoints || 0}</td>
-                                </tr>`).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>`;
-        }
 
         html += `</div>`;
         container.innerHTML = html;
