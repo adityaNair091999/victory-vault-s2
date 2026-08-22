@@ -186,9 +186,6 @@ const APP = (() => {
         // Live GW leader + average from provisional event_total
         const byEvent = [...appData.players].sort((a, b) => (b.eventTotal || 0) - (a.eventTotal || 0));
         const liveLeader = byEvent[0];
-        const liveAvg = appData.players.length
-            ? Math.round(appData.players.reduce((x, p) => x + (p.eventTotal || 0), 0) / appData.players.length)
-            : 0;
 
         // Next deadline countdown
         const now = Date.now();
@@ -313,17 +310,33 @@ const APP = (() => {
                     <div class="cc-lead-score num">${liveLeader?.eventTotal || 0} <small>pts</small></div>
                 </div>
                 <div class="cc-card cc-mini">
-                    <span class="cc-k">League Average</span>
-                    <div class="cc-big num">${liveAvg} <small>pts</small></div>
-                    <div class="cc-sub">${appData.players.length} managers this GW</div>
-                    <div style="margin-top:auto"><span class="cc-chip up">Season leader · ${s[0]?.total || 0} pts</span></div>
-                </div>
-                <div class="cc-card cc-mini">
                     <span class="cc-k">Next Deadline</span>
                     <div class="cc-big num">${deadlineStr}</div>
                     <div class="cc-sub">${deadlineSub}</div>
                     <div style="margin-top:auto"><span class="cc-chip warn">${gw} of ${totalGWs} gameweeks</span></div>
                 </div>
+            </div>
+        </section>`;
+
+        // Overall standings (classic league)
+        html += `
+        <section>
+            <div class="cc-head"><h2>Overall Standings</h2><span class="cc-hint">Classic League · ${isLiveGW ? 'live GW' + gw + ' totals' : 'GW' + gw}</span></div>
+            <div class="cc-card cc-tablewrap">
+                <table class="cc-tbl num">
+                    <thead><tr><th>#</th><th class="cc-team">Manager</th><th class="cc-team">Team</th><th>GW</th><th>Total</th><th>Prize</th></tr></thead>
+                    <tbody>
+                        ${s.map(p => `
+                        <tr class="${p.rank <= 3 ? 'qual' : ''}">
+                            <td class="cc-rk">${p.rank}</td>
+                            <td class="cc-team">${p.playerName}</td>
+                            <td class="cc-team cc-dim">${p.entryName}</td>
+                            <td>${p.eventTotal || 0}</td>
+                            <td class="cc-ptc">${p.total}</td>
+                            <td>${p.prize > 0 ? `<span class="cc-prize">$${p.prize}</span>` : '<span class="cc-dimdash">—</span>'}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
             </div>
         </section>`;
 

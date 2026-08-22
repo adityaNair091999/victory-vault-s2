@@ -3033,7 +3033,7 @@ body {
 .cc-chip.mute { color: var(--ink-soft); background: var(--surface-2); }
 
 /* Right Now */
-.cc-now { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 14px; }
+.cc-now { display: grid; grid-template-columns: 1.5fr 1fr; gap: 14px; }
 .cc-lead { display: flex; flex-direction: column; justify-content: space-between; gap: 14px; }
 .cc-lead-name { font-family: "Archivo", sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -.3px; margin-top: 10px; }
 .cc-lead-team { font-size: 12.5px; color: var(--ink-soft); }
@@ -3084,6 +3084,10 @@ body {
 .cc-tbl tr.qual .cc-rk { color: var(--acc); }
 .cc-tbl tr.qual { background: rgba(255,61,113,.05); }
 .cc-ptc { font-family: "Archivo", sans-serif; font-weight: 800; }
+.cc-tbl td.cc-team, .cc-tbl th.cc-team { text-align: left; }
+.cc-tbl td.cc-dim { color: var(--ink-soft); }
+.cc-prize { font-family: "DM Mono", monospace; font-size: 11px; color: var(--acc); background: rgba(255,61,113,.10); padding: 2px 8px; border-radius: 20px; }
+.cc-dimdash { color: var(--ink-faint); }
 
 .cc-note { font-size: 12px; color: var(--ink-soft); background: var(--inset); border: 1px dashed var(--line); border-radius: 12px; padding: 11px 13px; }
 
