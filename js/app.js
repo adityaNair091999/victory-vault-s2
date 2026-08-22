@@ -16,18 +16,71 @@ const APP = (() => {
         await refreshData();
     }
 
+    // Total prize pool across every competition (single source of truth).
+    function totalPrizePool() {
+        return CONFIG.PRIZES.SEASON[1] + CONFIG.PRIZES.SEASON[2] + CONFIG.PRIZES.SEASON[3] +
+            Object.keys(CONFIG.MONTHLY_PHASES).length * CONFIG.PRIZES.MONTHLY +
+            CONFIG.PRIZES.LMS.WINNER + CONFIG.PRIZES.LMS.RUNNER +
+            CONFIG.PRIZES.CHAMPIONS.WINNER + CONFIG.PRIZES.CHAMPIONS.RUNNER +
+            CONFIG.PRIZES.WORLDCUP.WINNER + CONFIG.PRIZES.WORLDCUP.RUNNER +
+            CONFIG.PRIZES.CUP + CONFIG.PRIZES.HIGHEST_GW;
+    }
+
     function setupTabs() {
-        const tabBar = document.getElementById('tab-bar');
-        tabBar.innerHTML = '';
-        for (const tab of CONFIG.TABS) {
-            const btn = document.createElement('button');
-            btn.className = `tab-btn ${tab.id === activeTab ? 'active' : ''}`;
-            btn.dataset.tab = tab.id;
-            btn.innerHTML = `<span class="tab-icon">${tab.icon}</span><span class="tab-label">${tab.label}</span>`;
-            btn.addEventListener('click', () => switchTab(tab.id));
-            tabBar.appendChild(btn);
+        const nav = document.getElementById('sidebar-nav');
+        if (!nav) return;
+        nav.innerHTML = '';
+
+        const groups = {};
+        for (const tab of CONFIG.TABS) (groups[tab.group] = groups[tab.group] || []).push(tab);
+        const order = CONFIG.NAV_GROUPS || Object.keys(groups);
+
+        for (const g of order) {
+            if (!groups[g]) continue;
+            const section = document.createElement('div');
+            section.className = 'nav-group';
+            section.innerHTML = `<div class="nav-group-label">${g}</div>`;
+            for (const tab of groups[g]) {
+                const btn = document.createElement('button');
+                btn.className = `nav-item ${tab.id === activeTab ? 'active' : ''}`;
+                btn.dataset.tab = tab.id;
+                btn.innerHTML = `<span class="nav-ic">${tab.icon}</span><span class="nav-lbl">${tab.label}</span>`;
+                btn.addEventListener('click', () => switchTab(tab.id));
+                section.appendChild(btn);
+            }
+            nav.appendChild(section);
         }
-        setupTabScrollArrows();
+
+        const pool = document.getElementById('pool-value');
+        if (pool) pool.textContent = '$' + totalPrizePool().toLocaleString();
+
+        setupNavToggle();
+        updateTopbarTitle();
+    }
+
+    function updateTopbarTitle() {
+        const tab = CONFIG.TABS.find(t => t.id === activeTab);
+        const el = document.getElementById('topbar-title');
+        if (el && tab) el.textContent = tab.label;
+    }
+
+    function closeSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const scrim = document.getElementById('sidebar-scrim');
+        if (sidebar) sidebar.classList.remove('open');
+        if (scrim) scrim.classList.remove('show');
+    }
+
+    function setupNavToggle() {
+        const toggle = document.getElementById('nav-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const scrim = document.getElementById('sidebar-scrim');
+        if (!toggle || !sidebar) return;
+        toggle.onclick = () => {
+            const open = sidebar.classList.toggle('open');
+            if (scrim) scrim.classList.toggle('show', open);
+        };
+        if (scrim) scrim.onclick = closeSidebar;
     }
 
     function setupTabScrollArrows() {
@@ -59,9 +112,11 @@ const APP = (() => {
 
     function switchTab(tabId) {
         activeTab = tabId;
-        document.querySelectorAll('.tab-btn').forEach(b => {
+        document.querySelectorAll('.nav-item').forEach(b => {
             b.classList.toggle('active', b.dataset.tab === tabId);
         });
+        updateTopbarTitle();
+        closeSidebar();
         renderActiveTab();
     }
 
@@ -121,9 +176,10 @@ const APP = (() => {
             if (!defaultTabSet) {
                 defaultTabSet = true;
                 activeTab = 'overview';
-                document.querySelectorAll('.tab-btn').forEach(b => {
+                document.querySelectorAll('.nav-item').forEach(b => {
                     b.classList.toggle('active', b.dataset.tab === activeTab);
                 });
+                updateTopbarTitle();
             }
 
             renderActiveTab();

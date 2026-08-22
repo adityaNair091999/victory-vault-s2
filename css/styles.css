@@ -3117,3 +3117,105 @@ body {
     .cc.motion .glow { animation: none; }
     .cc.motion > section { animation: none; }
 }
+
+/* ============================================================
+   MATCHDAY SHELL — sidebar nav + top bar
+   ============================================================ */
+body { background-image: none; }   /* drop legacy green/gold glows on true black */
+
+.app-shell {
+    --surface:   #0C0F0E;
+    --surface-2: #151A18;
+    --ink:       #E9F1EB;
+    --ink-soft:  #96A49B;
+    --ink-faint: #61706A;
+    --line:      rgba(233,241,235,0.10);
+    --line-soft: rgba(233,241,235,0.05);
+    --acc:       #4D82FF;
+    --acc-2:     #7CA3FF;
+    --on-acc:    #FFFFFF;
+    display: grid;
+    grid-template-columns: 248px 1fr;
+    min-height: 100vh;
+    font-family: "Hanken Grotesk", system-ui, sans-serif;
+}
+
+/* Sidebar */
+.sidebar {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    background: var(--surface); border-right: 1px solid var(--line);
+    padding: 18px 14px; display: flex; flex-direction: column; gap: 20px;
+}
+.sidebar-brand { display: flex; align-items: center; gap: 11px; padding: 6px 8px; }
+.brand-mark {
+    width: 38px; height: 38px; border-radius: 11px; flex: none; display: grid; place-items: center;
+    font-family: "Archivo", sans-serif; font-weight: 900; font-size: 16px; letter-spacing: -.5px; color: #fff;
+    background: linear-gradient(150deg, var(--acc), var(--acc-2));
+}
+.brand-name { font-family: "Archivo", sans-serif; font-weight: 800; font-size: 15.5px; letter-spacing: -.2px; line-height: 1; color: var(--ink); }
+.brand-sub { font-size: 11px; color: var(--ink-faint); margin-top: 3px; }
+
+.sidebar-nav { display: flex; flex-direction: column; gap: 16px; }
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-group-label { font-family: "DM Mono", monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); padding: 4px 10px 6px; }
+.nav-item {
+    display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+    padding: 8px 10px; border-radius: 9px; cursor: pointer;
+    color: var(--ink-soft); font: 500 13.5px "Hanken Grotesk", sans-serif;
+    background: transparent; border: 1px solid transparent;
+    transition: background .14s ease, color .14s ease;
+}
+.nav-item:hover { background: var(--surface-2); color: var(--ink); }
+.nav-item.active { background: var(--surface-2); color: var(--ink); font-weight: 600; box-shadow: inset 0 0 0 1px var(--line); }
+.nav-item.active .nav-ic { filter: none; }
+.nav-ic { width: 18px; text-align: center; font-size: 14px; flex: none; }
+.nav-lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-foot { margin-top: auto; padding: 12px 10px 4px; display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--ink-faint); border-top: 1px solid var(--line-soft); }
+.sidebar-foot-sub { opacity: .7; }
+
+/* Body + top bar */
+.app-body { min-width: 0; display: flex; flex-direction: column; }
+.topbar {
+    position: sticky; top: 0; z-index: 15; display: flex; align-items: center; gap: 12px;
+    padding: 12px 22px; border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, #000 78%, transparent); backdrop-filter: blur(10px);
+}
+.topbar-title { font-family: "Archivo", sans-serif; font-weight: 800; font-size: 17px; letter-spacing: -.2px; color: var(--ink); margin: 0; }
+.topbar-spacer { flex: 1; }
+.tb-pill {
+    display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 9px;
+    background: var(--surface-2); border: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap;
+}
+.tb-pool { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.05; }
+.tb-pool-k { font-family: "DM Mono", monospace; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); }
+.tb-pool-v { font-family: "Archivo", sans-serif; font-weight: 800; font-size: 15px; color: var(--ink); }
+.last-updated { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+.tb-refresh {
+    display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 9px; cursor: pointer;
+    background: var(--acc); color: var(--on-acc); border: 0; font: 600 12.5px "Hanken Grotesk", sans-serif;
+}
+.tb-refresh:hover { filter: brightness(1.08); }
+.tb-refresh svg { stroke: currentColor; }
+
+/* Live indicator pill (injected next to the GW pill) */
+#gw-live-indicator { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 9px; background: color-mix(in srgb, var(--acc) 16%, transparent); border: 1px solid color-mix(in srgb, var(--acc) 40%, transparent); color: var(--acc-2); font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+#gw-live-indicator .live-dot { background: var(--acc); }
+
+/* Main area inside the shell */
+.app-shell .app-main { max-width: 1240px; margin: 0; padding: 22px; }
+
+/* Mobile nav toggle + scrim */
+.nav-toggle { display: none; width: 38px; height: 38px; align-items: center; justify-content: center; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); cursor: pointer; }
+.sidebar-scrim { display: none; }
+
+@media (max-width: 960px) {
+    .app-shell { grid-template-columns: 1fr; }
+    .sidebar { position: fixed; left: 0; top: 0; width: 252px; z-index: 40; transform: translateX(-100%); transition: transform .22s ease; }
+    .sidebar.open { transform: none; }
+    .sidebar-scrim { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 35; opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+    .sidebar-scrim.show { opacity: 1; pointer-events: auto; }
+    .nav-toggle { display: inline-flex; }
+    .app-shell .app-main { padding: 16px; }
+    .last-updated, .tb-refresh-lbl { display: none; }
+    .topbar { padding: 10px 14px; gap: 8px; }
+}
