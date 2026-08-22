@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -30,61 +30,56 @@
         </div>
     </div>
 
-    <!-- Header -->
-    <header class="app-header">
-        <div class="header-inner">
-            <div class="header-brand">
-                <div class="brand-icon">⚽</div>
-                <div class="brand-text">
-                    <h1>Victory Vault <span class="season-tag">Season 3</span></h1>
-                    <p class="brand-subtitle">FPL Mini-League Dashboard</p>
+    <!-- App shell: sidebar + body -->
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-mark">VV</div>
+                <div class="brand-txt">
+                    <div class="brand-name">Victory Vault</div>
+                    <div class="brand-sub">Season 3 · 26/27</div>
                 </div>
             </div>
-            <div class="header-meta">
-                <div class="meta-pills">
-                    <span class="meta-pill gw-pill" id="current-gw">GW —</span>
-                    <span class="meta-pill players-pill" id="players-pill">— Players</span>
-
-                </div>
-                <div class="header-actions">
-                    <span id="last-updated" class="last-updated">Not yet loaded</span>
-                    <button id="refresh-btn" class="refresh-btn" onclick="APP.forceRefresh()">
-                        <svg class="refresh-icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
-                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="23 4 23 10 17 10"></polyline>
-                            <polyline points="1 20 1 14 7 14"></polyline>
-                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                        </svg>
-                        Refresh
-                    </button>
-                </div>
+            <nav class="sidebar-nav" id="sidebar-nav"><!-- grouped nav injected by JS --></nav>
+            <div class="sidebar-foot">
+                <span id="footer-brand">Victory Vault Season 3</span>
+                <span class="sidebar-foot-sub">Data powered by FPL API</span>
             </div>
-        </div>
-    </header>
+        </aside>
 
-    <!-- Tab Navigation -->
-    <nav class="tab-nav">
-        <button class="tab-scroll-btn tab-scroll-left" id="tab-scroll-left" aria-label="Scroll tabs left">&#8249;</button>
-        <div class="tab-nav-inner" id="tab-nav-inner">
-            <div id="tab-bar" class="tab-bar"></div>
-        </div>
-        <button class="tab-scroll-btn tab-scroll-right" id="tab-scroll-right" aria-label="Scroll tabs right">&#8250;</button>
-    </nav>
+        <div class="sidebar-scrim" id="sidebar-scrim"></div>
 
-    <!-- Main Content -->
-    <main class="app-main">
-        <div id="tab-content" class="tab-content">
-            <!-- Content injected by JS -->
-        </div>
-    </main>
+        <div class="app-body">
+            <header class="topbar">
+                <button class="nav-toggle" id="nav-toggle" aria-label="Open menu">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                </button>
+                <h1 class="topbar-title" id="topbar-title">Overview</h1>
+                <div class="topbar-spacer"></div>
+                <span class="tb-pill gw-pill" id="current-gw">GW —</span>
+                <span class="tb-pill" id="players-pill">— Players</span>
+                <div class="tb-pool">
+                    <span class="tb-pool-k">Prize Pool</span>
+                    <span class="tb-pool-v" id="pool-value">$—</span>
+                </div>
+                <span id="last-updated" class="last-updated">Not yet loaded</span>
+                <button id="refresh-btn" class="tb-refresh" onclick="APP.forceRefresh()" aria-label="Refresh data">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    <span class="tb-refresh-lbl">Refresh</span>
+                </button>
+            </header>
 
-    <!-- Footer -->
-    <footer class="app-footer">
-        <div class="footer-inner">
-            <span id="footer-brand">Victory Vault Season 3</span>
-            <span>Data powered by FPL API</span>
+            <main class="app-main">
+                <div id="tab-content" class="tab-content">
+                    <!-- Content injected by JS -->
+                </div>
+            </main>
         </div>
-    </footer>
+    </div>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>

@@ -61,18 +61,21 @@ const CONFIG = {
         'May':       { prize: 25, phaseId: 11 },
     },
 
-    // Tab definitions
+    // Sidebar nav groups, in display order
+    NAV_GROUPS: ['Overview', 'Competitions', 'Data'],
+
+    // Tab definitions (group = sidebar section)
     TABS: [
-        { id: 'overview', label: 'Overview', icon: '🏠' },
-        { id: 'gameweek', label: 'This GW', icon: '📋' },
-        { id: 'standings', label: 'Standings', icon: '🏆' },
-        { id: 'progress', label: 'Season Progress', icon: '📈' },
-        { id: 'champions', label: 'Champions League', icon: '🏆' },
-        { id: 'worldcup', label: 'World Cup', icon: '🌍' },
-        { id: 'monthly', label: 'Monthly Prize', icon: '📅' },
-        { id: 'lms', label: 'Last Man Standing', icon: '💀' },
-        { id: 'cup', label: 'FA Cup', icon: '🏅' },
-        { id: 'highestgw', label: 'Highest GW', icon: '⚡' },
-        { id: 'transfers', label: 'Transfers', icon: '🔄' },
+        { id: 'overview', label: 'Overview', icon: '🏠', group: 'Overview' },
+        { id: 'gameweek', label: 'This GW', icon: '📋', group: 'Overview' },
+        { id: 'champions', label: 'Champions League', icon: '🏆', group: 'Competitions' },
+        { id: 'worldcup', label: 'World Cup', icon: '🌍', group: 'Competitions' },
+        { id: 'lms', label: 'Last Man Standing', icon: '💀', group: 'Competitions' },
+        { id: 'monthly', label: 'Monthly Prize', icon: '📅', group: 'Competitions' },
+        { id: 'cup', label: 'FA Cup', icon: '🏅', group: 'Competitions' },
+        { id: 'highestgw', label: 'Highest GW', icon: '⚡', group: 'Competitions' },
+        { id: 'standings', label: 'Standings', icon: '📊', group: 'Data' },
+        { id: 'progress', label: 'Season Progress', icon: '📈', group: 'Data' },
+        { id: 'transfers', label: 'Transfers', icon: '🔄', group: 'Data' },
     ],
 };
