@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Victory Vault Season 3 — Main Application Controller
 // ============================================================
 
@@ -210,6 +210,7 @@ const APP = (() => {
         switch (activeTab) {
             case 'overview': renderOverview(content); break;
             case 'gameweek': renderGameweek(content); break;
+            case 'rules': renderRules(content); break;
             case 'standings': renderStandings(content); break;
             case 'progress': renderProgress(content); break;
             case 'monthly': renderMonthly(content); break;
@@ -459,6 +460,19 @@ const APP = (() => {
             'World Cup': 'worldcup', 'Monthly Prize': 'monthly', 'FA Cup': 'cup', 'Highest GW': 'highestgw',
         };
         return map[name] || '';
+    }
+
+    // --------------------------------------------------------
+    // RULES & PRIZES TAB
+    // --------------------------------------------------------
+    function renderRules(container) {
+        // Embeds the standalone rules document (Victory_Vault_Season3_Final.html) so it
+        // stays the single source of truth — edit that file and the site updates.
+        container.innerHTML = '<div class="rules-embed"><iframe class="rules-frame" title="Victory Vault Season 3 rules" src="Victory_Vault_Season3_Final.html"></iframe></div>';
+        const frame = container.querySelector('.rules-frame');
+        if (!frame) return;
+        const fit = () => { try { frame.style.height = (frame.contentWindow.document.body.scrollHeight + 48) + 'px'; } catch (e) { } };
+        frame.addEventListener('load', fit);
     }
 
     // --------------------------------------------------------

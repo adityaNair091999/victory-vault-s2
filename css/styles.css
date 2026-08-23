@@ -3242,3 +3242,21 @@ body { background-image: none; }   /* drop legacy green/gold glows on true black
 .monthly-matrix .month-cell.muted { color: var(--text-muted); }
 .monthly-matrix .month-win { font-weight: 700; color: var(--gold-light); background: var(--gold-glow); }
 .monthly-matrix .month-sum { text-align: center; }
+
+/* ============================================================
+   RULES & PRIZES tab — embeds the standalone rules HTML document
+   ============================================================ */
+.rules-embed {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .4), 0 20px 48px rgba(0, 0, 0, .4);
+}
+.rules-frame {
+    display: block;
+    width: 100%;
+    height: 1800px; /* fallback until the iframe's onload sizes it to content */
+    border: 0;
+    background: #fff;
+}

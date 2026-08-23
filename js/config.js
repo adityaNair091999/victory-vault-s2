@@ -68,6 +68,7 @@ const CONFIG = {
     TABS: [
         { id: 'overview', label: 'Overview', icon: '🏠', group: 'Overview' },
         { id: 'gameweek', label: 'This GW', icon: '📋', group: 'Overview' },
+        { id: 'rules', label: 'Rules & Prizes', icon: '📜', group: 'Overview' },
         { id: 'champions', label: 'Champions League', icon: '🏆', group: 'Competitions' },
         { id: 'worldcup', label: 'World Cup', icon: '🌍', group: 'Competitions' },
         { id: 'lms', label: 'Last Man Standing', icon: '💀', group: 'Competitions' },
