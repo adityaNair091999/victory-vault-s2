@@ -210,6 +210,7 @@ const APP = (() => {
         switch (activeTab) {
             case 'overview': renderOverview(content); break;
             case 'gameweek': renderGameweek(content); break;
+            case 'rules': renderRules(content); break;
             case 'standings': renderStandings(content); break;
             case 'progress': renderProgress(content); break;
             case 'monthly': renderMonthly(content); break;
@@ -459,6 +460,178 @@ const APP = (() => {
             'World Cup': 'worldcup', 'Monthly Prize': 'monthly', 'FA Cup': 'cup', 'Highest GW': 'highestgw',
         };
         return map[name] || '';
+    }
+
+    // --------------------------------------------------------
+    // RULES & PRIZES TAB
+    // --------------------------------------------------------
+    function renderRules(container) {
+        const totalPool = totalPrizePool();
+
+        // Prize-structure overview
+        const overview = [
+            ['Classic League', '$450', 'All 30', 'GW1–38'],
+            ['Monthly Winners', '$250', 'All 30', 'Monthly blocks'],
+            ['Champions League', '$225', 'All 30 · top 8 advance', 'GW1–15 H2H · GW15–18 KO'],
+            ['World Cup', '$225', 'All 30', 'GW21–29 groups · GW30–32 KO'],
+            ['Last Man Standing', '$225', 'All 30', 'GW1–29'],
+            ['FA Cup (FPL Cup)', '$75', 'All 30', 'GW34–38'],
+            ['Highest Gameweek Score', '$50', 'All 30', 'Season-wide'],
+        ];
+
+        // Join steps
+        const steps = [
+            ['Create your team', 'Build your squad on premierleague.com or the official FPL app.'],
+            ['Join the Classic League', 'Leagues &amp; Cups → Join a league → Enter code <span class="rule-code">0zfyv1</span>. Everyone joins this pool.'],
+            ['Join the Champions League', 'Leagues &amp; Cups → Join a league → Enter code <span class="rule-code">c1lxjn</span>. This is the H2H league.'],
+            ['World Cup groups (GW20)', 'Randomized H2H groups of 10 are created and codes shared — join before GW21 starts.'],
+        ];
+
+        // Per-competition detail
+        const comps = [
+            { n: 'Classic League', prize: '$450', tiers: '1st $250 · 2nd $125 · 3rd $75',
+              body: ['Full-season cumulative overall points, GW1–38.'] },
+            { n: 'Champions League', prize: '$225', tiers: 'Winner $150 · Runner-up $75',
+              body: [
+                '<b>League Phase · GW1–15</b> — all 30 managers in one Head-to-Head league.',
+                '<b>Knockout · GW15–18</b> — top 8 from the H2H table enter a single-elimination bracket (1v8, 2v7, 3v6, 4v5).',
+                '<b>Tie-breaks</b> — league phase: overall season points. Knockout: GW points → captain → vice-captain → season points.',
+              ] },
+            { n: 'World Cup', prize: '$225', tiers: 'Winner $150 · Runner-up $75',
+              body: [
+                '<b>Group Stage · GW21–29</b> — 30 managers in 3 H2H groups of 10.',
+                '<b>Qualification</b> — top 2 per group (6) + the 2 best 3rd-placed finishers advance to an 8-team knockout.',
+                '<b>Knockout · GW30–32</b> — cross-group bracket: QF (GW30) → SF (GW31) → Final (GW32).',
+                '<b>Tie-breaks</b> — groups: season points from GW21 on. Knockout: GW points → captain → vice-captain → season points.',
+              ] },
+            { n: 'Monthly Winners', prize: '$250', tiers: '$25 × 10 months',
+              body: [
+                '$25 to the top performer of each calendar month, paid once scores are final.',
+                'A gameweek belongs to the month its deadline falls in (a 31 Aug deadline counts toward August).',
+              ] },
+            { n: 'Last Man Standing', prize: '$225', tiers: 'Winner $150 · Runner-up $75',
+              body: [
+                'Runs GW1–29. The lowest net scorer each gameweek is eliminated — one manager every week until one survivor remains.',
+                '<b>Tie-break</b> — lowest captain score out, then vice-captain, then fewer overall season points.',
+              ] },
+            { n: 'FA Cup (FPL Cup)', prize: '$75', tiers: 'Winner takes all',
+              body: ['The standard automated FPL knockout cup for our Classic League. Runs GW34–38.'] },
+            { n: 'Highest Gameweek Score', prize: '$50', tiers: 'Single prize',
+              body: ['One $50 prize for the highest individual gameweek score across the season. Free Hit points are fully eligible.'] },
+        ];
+
+        // Season-map timeline segments (start, end, label)
+        const trackColor = {
+            classic: 'linear-gradient(90deg,#4D82FF,#7CA3FF)', monthly: '#F1B42C',
+            champions: '#6B5CE7', worldcup: '#14B852', lms: '#E0574F', facup: '#E67E22', highest: 'linear-gradient(90deg,#8E44AD,#A569BD)',
+        };
+        const pos = (a, b) => `left:${((a - 1) / 38 * 100).toFixed(1)}%; width:${((b - a + 1) / 38 * 100).toFixed(1)}%;`;
+        const timeline = [
+            { label: 'Classic League', bars: [{ s: 1, e: 38, t: 'GW1–38', c: trackColor.classic }] },
+            { label: 'Monthly', bars: [{ s: 1, e: 38, t: 'Monthly blocks', c: trackColor.monthly }] },
+            { label: 'Champions League', bars: [{ s: 1, e: 15, t: 'H2H 1–15', c: trackColor.champions }, { s: 16, e: 18, t: 'KO', c: trackColor.champions, dim: true }] },
+            { label: 'World Cup', bars: [{ s: 21, e: 29, t: 'Groups 21–29', c: trackColor.worldcup }, { s: 30, e: 32, t: 'KO', c: trackColor.worldcup, dim: true }] },
+            { label: 'Last Man Standing', bars: [{ s: 1, e: 29, t: 'GW1–29', c: trackColor.lms }] },
+            { label: 'FA Cup', bars: [{ s: 34, e: 38, t: '34–38', c: trackColor.facup }] },
+            { label: 'Highest GW', bars: [{ s: 1, e: 38, t: 'Best single GW', c: trackColor.highest }] },
+        ];
+
+        let html = `<div class="cc">`;
+
+        // Hero
+        html += `
+        <section class="cc-hero">
+            <div class="glow"></div>
+            <div class="cc-hero-eyebrow">Rules &amp; Prizes · Season 3 · 2026/27</div>
+            <h1 class="cc-hero-title">$${totalPool.toLocaleString()}, seven ways to win.</h1>
+            <div class="cc-hero-row">
+                <div class="cc-hstat"><span class="cc-k">Managers</span><span class="cc-v num">30</span></div>
+                <div class="cc-hstat"><span class="cc-k">Entry</span><span class="cc-v num">$50</span></div>
+                <div class="cc-hstat"><span class="cc-k">Prize Pool</span><span class="cc-v num">$${totalPool.toLocaleString()}</span></div>
+                <div class="cc-hstat"><span class="cc-k">Competitions</span><span class="cc-v num">7</span></div>
+            </div>
+        </section>`;
+
+        // Prize structure table
+        html += `
+        <section>
+            <div class="cc-head"><h2>Prize Structure</h2><span class="cc-hint">Fully allocated</span></div>
+            <div class="cc-card cc-tablewrap">
+                <table class="cc-tbl">
+                    <thead><tr><th class="cc-team">Competition</th><th>Pool</th><th class="cc-team">Who's eligible</th><th class="cc-team">Timeline</th></tr></thead>
+                    <tbody>
+                        ${overview.map(r => `<tr>
+                            <td class="cc-team"><strong>${r[0]}</strong></td>
+                            <td><span class="cc-prize">${r[1]}</span></td>
+                            <td class="cc-team cc-dim">${r[2]}</td>
+                            <td class="cc-team cc-dim">${r[3]}</td>
+                        </tr>`).join('')}
+                        <tr class="rule-total"><td class="cc-team"><strong>Total</strong></td><td><strong>$${totalPool.toLocaleString()}</strong></td><td class="cc-team cc-dim" colspan="2">Fully allocated</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>`;
+
+        // How to join
+        html += `
+        <section>
+            <div class="cc-head"><h2>How to Join</h2><span class="cc-hint">Before the GW1 deadline</span></div>
+            <div class="rule-steps">
+                ${steps.map((s, i) => `
+                <div class="rule-step">
+                    <div class="rule-step-num">${i + 1}</div>
+                    <div class="rule-step-body"><div class="rule-step-title">${s[0]}</div><div class="rule-step-text">${s[1]}</div></div>
+                </div>`).join('')}
+            </div>
+        </section>`;
+
+        // Competition detail
+        html += `
+        <section>
+            <div class="cc-head"><h2>Competitions</h2><span class="cc-hint">Formats &amp; tie-breakers</span></div>
+            <div class="rule-comps">
+                ${comps.map(c => `
+                <div class="cc-card rule-comp">
+                    <div class="rule-comp-top">
+                        <span class="rule-comp-name">${c.n}</span>
+                        <span class="cc-prize">${c.prize}</span>
+                    </div>
+                    <div class="rule-comp-tiers">${c.tiers}</div>
+                    <ul class="rule-comp-list">${c.body.map(b => `<li>${b}</li>`).join('')}</ul>
+                </div>`).join('')}
+            </div>
+        </section>`;
+
+        // Other rules
+        html += `
+        <section>
+            <div class="cc-head"><h2>Other Rules</h2></div>
+            <div class="rule-comps">
+                <div class="cc-card rule-comp"><div class="rule-comp-name">Head-to-head scoring</div><ul class="rule-comp-list"><li>Your match score is your raw gameweek score minus any transfer hits taken (−4, −8, …).</li></ul></div>
+                <div class="cc-card rule-comp"><div class="rule-comp-name">Blank &amp; double gameweeks</div><ul class="rule-comp-list"><li>Raw, unadjusted FPL points in every competition.</li></ul></div>
+            </div>
+        </section>`;
+
+        // Season map
+        html += `
+        <section>
+            <div class="cc-head"><h2>Season Map</h2><span class="cc-hint">GW1 → GW38</span></div>
+            <div class="cc-card rule-map">
+                <div class="rule-map-axis">${[1, 5, 10, 15, 20, 25, 30, 35, 38].map(g => `<span style="left:${((g - 1) / 38 * 100).toFixed(1)}%">${g}</span>`).join('')}</div>
+                ${timeline.map(row => `
+                <div class="rule-map-row">
+                    <span class="rule-map-label">${row.label}</span>
+                    <div class="rule-map-track">
+                        ${row.bars.map(b => `<div class="rule-map-bar ${b.dim ? 'dim' : ''}" style="${pos(b.s, b.e)} background:${b.c};"><span>${b.t}</span></div>`).join('')}
+                    </div>
+                </div>`).join('')}
+            </div>
+        </section>`;
+
+        html += `<div class="cc-note" style="text-align:center">Every manager has a live competition from GW1 to GW38.</div>`;
+
+        html += `</div>`;
+        container.innerHTML = html;
     }
 
     // --------------------------------------------------------

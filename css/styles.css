@@ -3242,3 +3242,38 @@ body { background-image: none; }   /* drop legacy green/gold glows on true black
 .monthly-matrix .month-cell.muted { color: var(--text-muted); }
 .monthly-matrix .month-win { font-weight: 700; color: var(--gold-light); background: var(--gold-glow); }
 .monthly-matrix .month-sum { text-align: center; }
+
+/* ============================================================
+   RULES & PRIZES tab (inside .cc — inherits Matchday tokens)
+   ============================================================ */
+.rule-code { font-family: "DM Mono", monospace; font-weight: 500; background: color-mix(in srgb, var(--acc) 16%, transparent); color: var(--acc-2); padding: 1px 7px; border-radius: 6px; letter-spacing: .04em; }
+.cc-tbl tr.rule-total td { border-top: 2px solid var(--line); padding-top: 11px; }
+
+.rule-steps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.rule-step { display: flex; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--cc-sh); }
+.rule-step-num { width: 28px; height: 28px; flex: none; border-radius: 8px; display: grid; place-items: center; font-family: "Archivo", sans-serif; font-weight: 800; font-size: 14px; color: var(--on-acc); background: var(--acc); }
+.rule-step-title { font-family: "Archivo", sans-serif; font-weight: 700; font-size: 14px; color: var(--ink); margin-bottom: 3px; }
+.rule-step-text { font-size: 12.5px; color: var(--ink-soft); line-height: 1.5; }
+
+.rule-comps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.rule-comp { display: flex; flex-direction: column; gap: 8px; }
+.rule-comp-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rule-comp-name { font-family: "Archivo", sans-serif; font-weight: 800; font-size: 15px; color: var(--ink); }
+.rule-comp-tiers { font-family: "DM Mono", monospace; font-size: 11.5px; color: var(--acc-2); }
+.rule-comp-list { margin: 2px 0 0; padding-left: 16px; display: flex; flex-direction: column; gap: 6px; }
+.rule-comp-list li { font-size: 12.5px; color: var(--ink-soft); line-height: 1.55; }
+.rule-comp-list li b { color: var(--ink); font-weight: 700; }
+
+.rule-map { padding: 18px 18px 14px; overflow-x: auto; }
+.rule-map-axis { position: relative; height: 14px; margin: 0 0 8px 148px; min-width: 320px; }
+.rule-map-axis span { position: absolute; transform: translateX(-50%); font-family: "DM Mono", monospace; font-size: 9px; color: var(--ink-faint); }
+.rule-map-row { display: flex; align-items: center; gap: 12px; margin-bottom: 7px; }
+.rule-map-label { width: 136px; flex: none; font-size: 12px; font-weight: 600; color: var(--ink); }
+.rule-map-track { position: relative; flex: 1; height: 22px; min-width: 320px; background: var(--inset); border-radius: 5px; }
+.rule-map-bar { position: absolute; top: 0; height: 100%; border-radius: 5px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.rule-map-bar span { font-size: 9px; font-weight: 600; color: #fff; white-space: nowrap; padding: 0 5px; }
+.rule-map-bar.dim { opacity: .62; }
+
+@media (max-width: 900px) {
+    .rule-steps, .rule-comps { grid-template-columns: 1fr; }
+}
