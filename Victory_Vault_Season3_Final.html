@@ -1,0 +1,373 @@
+<base target="_blank"><style>@layer mm-artifact{body{margin:0;background:#fff}img{display:block;max-width:100%}}</style><style>@layer mm-artifact{:root{--code-bg:#eff1f5;--code-fg:#4c4f69;--code-border:#ccd0da}pre{background:var(--code-bg);color:var(--code-fg);border:1px solid var(--code-border);border-radius:6px;padding:12px 16px;overflow-x:auto;font-size:13px;line-height:1.6;tab-size:4}pre code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;white-space:pre}code:not(pre code){background:rgba(128,128,128,0.15);padding:0.15em 0.4em;border-radius:4px;font-size:0.9em;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}}</style><script>(function(){function S(){var d={};Object.defineProperties(this,{getItem:{value:function(k){return d.hasOwnProperty(k)?d[k]:null}},setItem:{value:function(k,v){var o=d[k]||null;d[k]=String(v);this.length=Object.keys(d).length}},removeItem:{value:function(k){delete d[k];this.length=Object.keys(d).length}},clear:{value:function(){d={};this.length=0}},key:{value:function(i){return Object.keys(d)[i]||null}},length:{value:0,writable:true}})}try{window.localStorage}catch(e){Object.defineProperty(window,'localStorage',{value:new S(),configurable:true})}try{window.sessionStorage}catch(e){Object.defineProperty(window,'sessionStorage',{value:new S(),configurable:true})}var hp=history.pushState;history.pushState=function(){try{hp.apply(history,arguments)}catch(e){}};var hr=history.replaceState;history.replaceState=function(){try{hr.apply(history,arguments)}catch(e){}};try{document.cookie}catch(e){Object.defineProperty(document,'cookie',{get:function(){return ''},set:function(){},configurable:true})}})();</script><script>document.addEventListener('click',function(e){var a=e.target.closest('a[href^="#"]');if(!a)return;e.preventDefault();var id=a.getAttribute('href').slice(1);if(!id)return;var el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});}try{history.replaceState(null,'','#'+id)}catch(e){}});</script><!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 40px; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #1a1a1a;
+    max-width: 750px;
+    margin: 0 auto;
+    padding: 40px;
+    line-height: 1.5;
+    background: #fff;
+  }
+  h1 {
+    font-size: 36px;
+    font-weight: 900;
+    color: #1b1464;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .subtitle {
+    font-size: 15px;
+    color: #333;
+    margin-bottom: 30px;
+  }
+  .subtitle .prize {
+    color: #d4a017;
+    font-weight: 700;
+  }
+  .divider {
+    height: 4px;
+    background: linear-gradient(to right, #1b1464, #d4a017);
+    border: none;
+    margin: 24px 0;
+    border-radius: 2px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px 0;
+    font-size: 14px;
+  }
+  table th {
+    background: #1b1464;
+    color: #fff;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+  table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  table tr:last-child td {
+    border-bottom: none;
+  }
+  table tr.total td {
+    font-weight: 700;
+    border-top: 2px solid #1b1464;
+  }
+  .prize-table th {
+    background: #1b1464;
+  }
+  .prize-table td {
+    font-weight: 600;
+    text-align: center;
+    padding: 8px 10px;
+  }
+  .prize-table th {
+    text-align: center;
+  }
+  h2 {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1b1464;
+    margin-top: 32px;
+    margin-bottom: 8px;
+  }
+  h3 {
+    font-size: 16px;
+    color: #1b1464;
+    font-weight: 700;
+    margin-top: 24px;
+    margin-bottom: 6px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1a1a1a;
+    margin-top: 28px;
+    margin-bottom: 6px;
+  }
+  .section-title .num {
+    color: #1b1464;
+    margin-right: 8px;
+  }
+  .section-title .prize-amount {
+    color: #1b1464;
+  }
+  p, li {
+    font-size: 14px;
+    color: #333;
+  }
+  .step { margin-bottom: 10px; }
+  .step b { color: #1a1a1a; }
+  .bold { font-weight: 700; }
+  .italic { font-style: italic; }
+  .highlight { color: #d4a017; font-weight: 700; }
+  .rules-table td:first-child {
+    width: 30px;
+    text-align: center;
+    font-weight: 700;
+    color: #1b1464;
+  }
+  .season-map th {
+    background: #1b1464;
+    color: #fff;
+  }
+  .footer-line {
+    text-align: center;
+    font-weight: 700;
+    color: #d4a017;
+    font-size: 15px;
+    margin-top: 30px;
+    padding: 12px;
+  }
+  .page-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #888;
+    margin-top: 40px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+  }
+  .sub-phase {
+    margin-left: 0;
+    margin-bottom: 6px;
+  }
+  .sub-phase b { color: #1a1a1a; }
+</style>
+</head>
+<body>
+
+<h1>VICTORY VAULT</h1>
+<p class="subtitle">SEASON 3 · 2026–27  ·  30 managers  ·  $50 entry  ·  <span class="prize">$1,500 prize pool</span></p>
+
+<hr class="divider">
+
+<table>
+  <tr><th>COMPETITION</th><th>POOL</th><th>WHO'S ELIGIBLE</th><th>TIMELINE</th><th>ENROLLMENT</th></tr>
+  <tr><td>Classic League</td><td>$450</td><td>All 30</td><td>GW1–38</td><td>Join Classic League code</td></tr>
+  <tr><td>Monthly Winners</td><td>$250</td><td>All 30</td><td>Monthly Blocks</td><td>Automatic</td></tr>
+  <tr><td>Champions League</td><td>$225</td><td>All 30 (Top 8 advance)</td><td>GW1–15 (H2H) / GW15–18 (KO)</td><td>Join GW1 H2H League</td></tr>
+  <tr><td>World Cup Tournament</td><td>$225</td><td>All 30</td><td>GW21–29 (Groups) / GW30–32 (KO)</td><td>H2H groups created GW20 (randomized)</td></tr>
+  <tr><td>Last Man Standing</td><td>$225</td><td>All 30</td><td>GW1–29</td><td>Automatic</td></tr>
+  <tr><td>FA Cup (FPL Cup)</td><td>$75</td><td>All 30</td><td>GW34–38</td><td>Automatic</td></tr>
+  <tr><td>Highest Gameweek Score</td><td>$50</td><td>All 30</td><td>Season-wide</td><td>Automatic</td></tr>
+  <tr class="total"><td><strong>TOTAL</strong></td><td><strong>$1,500</strong></td><td><strong>Fully Allocated</strong></td><td></td><td></td></tr>
+</table>
+
+<h2>HOW TO JOIN — BEFORE THE GW1 DEADLINE</h2>
+
+<p class="step"><b>Step 1 — Create your team.</b> Build your squad on premierleague.com or open the official FPL app.</p>
+<p class="step"><b>Step 2 — Join the Classic League.</b> Leagues & Cups → Join a league → Enter code → <b>0zfyv1</b>. Everyone joins this pool.</p>
+<p class="step"><b>Step 3 — Join the Champions League group.</b> Leagues & Cups → Join a league → Enter code → <b>c1lxjn</b>. This is the Champions League H2H league.</p>
+<p class="step"><b>GW20 — World Cup groups announced.</b> Randomized H2H groups of 10 will be created and codes shared — join before GW21 starts.</p>
+
+<hr class="divider">
+
+<!-- SECTION 1 -->
+<div class="section-title"><span class="num">1</span> CLASSIC LEAGUE — <span class="prize-amount">$450</span></div>
+<p>Full-season cumulative overall points, GW1–38.</p>
+
+<table class="prize-table">
+  <tr><th>1st</th><th>2nd</th><th>3rd</th></tr>
+  <tr><td>$250</td><td>$125</td><td>$75</td></tr>
+</table>
+
+<!-- SECTION 2 -->
+<div class="section-title"><span class="num">2</span> CHAMPIONS LEAGUE — <span class="prize-amount">$225</span></div>
+
+<p class="sub-phase"><b>League Phase · GW1–15</b> — All 30 managers compete simultaneously within a single Head-to-Head (H2H) league structure.</p>
+<p class="sub-phase"><b>League Phase Tie-Breaker:</b> If managers finish on the same H2H points, overall season FPL points decides who advances.</p>
+<p class="sub-phase"><b>Knockout Phase · GW15–18</b> — The Top 8 managers from the H2H table at the conclusion of GW15 advance into a single-elimination bracket. Seeding is based on league-phase ranking: 1st vs 8th, 2nd vs 7th, 3rd vs 6th, 4th vs 5th.</p>
+<p class="sub-phase"><b>Knockout Tie-Breaker:</b> If a knockout match is tied on gameweek points, the manager with the lower captain score is eliminated. If still tied, the lower vice-captain score decides. If still tied, the manager with fewer overall season FPL points is eliminated.</p>
+<p>Bracket tracking, fixtures, and progress hosted on the official Victory Vault website.</p>
+
+<table class="prize-table">
+  <tr><th>Winner</th><th>Runner-up</th></tr>
+  <tr><td>$150</td><td>$75</td></tr>
+</table>
+
+<!-- SECTION 3 -->
+<div class="section-title"><span class="num">3</span> WORLD CUP TOURNAMENT — <span class="prize-amount">$225</span></div>
+
+<p class="sub-phase"><b>Group Stage · GW21–29</b> — 30 managers divided into 3 head-to-head groups of 10.</p>
+<p class="sub-phase"><b>Knockout Qualification (8 Managers):</b></p>
+<ul>
+  <li>Top 2 from each group qualify automatically (6 managers).</li>
+  <li>Two best 3rd-place finishers across all groups qualify on accumulated group-stage points.</li>
+</ul>
+<p class="sub-phase"><b>Group Stage Tie-Breaker:</b> If H2H league points are tied, overall season FPL points accumulated from GW21 onward decides.</p>
+<p class="sub-phase"><b>Knockout Phase · GW30–32</b> — 8 qualifiers enter a single-elimination bracket seeded by cross-group draw:</p>
+<ul>
+  <li><b>QF1:</b> Group A 1st vs 2nd-best 3rd</li>
+  <li><b>QF2:</b> Group B 1st vs Best 3rd</li>
+  <li><b>QF3:</b> Group C 1st vs Group B 2nd</li>
+  <li><b>QF4:</b> Group A 2nd vs Group C 2nd</li>
+</ul>
+<p style="margin-top:4px;"><b>Semi-Finals (GW31):</b> QF winners face off. <b>Final (GW32):</b> Winner takes $150, Runner-up takes $75.</p>
+<p class="sub-phase"><b>Knockout Tie-Breaker:</b> If a knockout match is tied on gameweek points, the manager with the lower captain score is eliminated. If still tied, the lower vice-captain score decides. If still tied, the manager with fewer overall season FPL points is eliminated.</p>
+
+<table class="prize-table">
+  <tr><th>Winner</th><th>Runner-up</th></tr>
+  <tr><td>$150</td><td>$75</td></tr>
+</table>
+
+<!-- SECTION 4 -->
+<div class="section-title"><span class="num">4</span> MONTHLY WINNERS — <span class="prize-amount">$250</span></div>
+<p><b>$25</b> to the top performer of each calendar month, across <b>10 monthly windows</b> ($25 × 10 = $250). Paid monthly, once scores are final.</p>
+<p><b>Monthly Qualification:</b> A gameweek belongs to the month in which its deadline falls. For example, if a GW deadline is 31st August, that GW counts toward August.</p>
+
+<table class="prize-table">
+  <tr><th>Monthly Payout</th><th>Total (10 months)</th></tr>
+  <tr><td>$25</td><td>$250</td></tr>
+</table>
+
+<!-- SECTION 5 -->
+<div class="section-title"><span class="num">5</span> LAST MAN STANDING — <span class="prize-amount">$225</span></div>
+<p>Runs <b>GW1–29</b>. The lowest net scorer each gameweek is eliminated — one manager, every week — 29 eliminations until one survivor remains.</p>
+<p><b>Tie-Breaker:</b> If two or more managers tie on the lowest score, the manager with the lower captain score is eliminated. If still tied, the lower vice-captain score decides. If still tied, the manager with fewer overall season FPL points is eliminated.</p>
+
+<table class="prize-table">
+  <tr><th>Winner</th><th>Runner-up</th></tr>
+  <tr><td>$150</td><td>$75</td></tr>
+</table>
+
+<!-- SECTION 6 -->
+<div class="section-title"><span class="num">6</span> FA CUP (FPL CUP) — <span class="prize-amount">$75</span></div>
+<p>The standard automated knockout cup created directly inside the FPL platform for our Classic League. Runs <b>GW34–38</b>. Winner takes <b>$75</b>.</p>
+
+<table class="prize-table">
+  <tr><th>Winner</th></tr>
+  <tr><td>$75</td></tr>
+</table>
+
+<!-- SECTION 7 -->
+<div class="section-title"><span class="num">7</span> HIGHEST GAMEWEEK SCORE — <span class="prize-amount">$50</span></div>
+<p>A single <b>$50</b> prize for the highest individual gameweek score across the entire season. Free Hit chip points are fully eligible.</p>
+
+<table class="prize-table">
+  <tr><th>Winner</th></tr>
+  <tr><td>$50</td></tr>
+</table>
+
+<hr class="divider">
+
+<h2>OTHER RULES</h2>
+
+
+
+<p><b>Head-to-head scoring:</b> Your match score is your raw gameweek score minus any transfer hits taken (−4, −8 points, etc.).</p>
+
+<p><b>Blank & double gameweeks:</b> Raw, unadjusted FPL points in every competition.</p>
+
+<hr class="divider">
+
+<h2>SEASON MAP</h2>
+
+<div style="margin:16px 0; font-size:12px;">
+  <!-- Timeline header -->
+  <div style="display:flex; margin-bottom:4px; padding-left:140px;">
+    <span style="width:40px; text-align:center; color:#666; font-size:9px;">1</span>
+    <span style="width:40px; text-align:center; color:#666; font-size:9px;">5</span>
+    <span style="width:40px; text-align:center; color:#666; font-size:9px;">10</span>
+    <span style="width:40px; text-align:center; color:#666; font-size:9px;">15</span>
+    <span style="width:40px; text-align:center; color:#666; font-size:9px;">20</span>
+    <span style="width:40px; text-align:center; color:#666; font-size:9px;">25</span>
+    <span style="width:40px; text-align:center; color:#666; font-size:9px;">30</span>
+    <span style="width:40px; text-align:center; color:#666; font-size:9px;">35</span>
+    <span style="width:40px; text-align:center; color:#666; font-size:9px;">38</span>
+  </div>
+
+  <!-- Classic League -->
+  <div style="display:flex; align-items:center; margin-bottom:6px;">
+    <span style="width:136px; font-weight:700; color:#1a1a1a; font-size:11px;">Classic League</span>
+    <div style="position:relative; width:360px; height:22px; background:#f0f0f0; border-radius:4px;">
+      <div style="position:absolute; left:0%; width:100%; height:100%; background:linear-gradient(to right, #1b1464, #2d2496); border-radius:4px; display:flex; align-items:center; justify-content:center;">
+        <span style="color:#fff; font-size:9px; font-weight:600;">GW1–38</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly Winners -->
+  <div style="display:flex; align-items:center; margin-bottom:6px;">
+    <span style="width:136px; font-weight:700; color:#1a1a1a; font-size:11px;">Monthly Winners</span>
+    <div style="position:relative; width:360px; height:22px; background:#f0f0f0; border-radius:4px;">
+      <div style="position:absolute; left:0%; width:100%; height:100%; background:linear-gradient(to right, #d4a017, #e6b422); border-radius:4px; display:flex; align-items:center; justify-content:center;">
+        <span style="color:#fff; font-size:9px; font-weight:600;">GW1–38 (monthly blocks)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Champions League -->
+  <div style="display:flex; align-items:center; margin-bottom:6px;">
+    <span style="width:136px; font-weight:700; color:#1a1a1a; font-size:11px;">Champions League</span>
+    <div style="position:relative; width:360px; height:22px; background:#f0f0f0; border-radius:4px;">
+      <div style="position:absolute; left:0%; width:39.5%; height:100%; background:#3a2ca0; border-radius:4px 0 0 4px; display:flex; align-items:center; justify-content:center;">
+        <span style="color:#fff; font-size:9px; font-weight:600;">H2H 1–15</span>
+      </div>
+      <div style="position:absolute; left:39.5%; width:8%; height:100%; background:#6b5ce7; border-radius:0 4px 4px 0; display:flex; align-items:center; justify-content:center;">
+        <span style="color:#fff; font-size:8px; font-weight:600;">KO</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- World Cup -->
+  <div style="display:flex; align-items:center; margin-bottom:6px;">
+    <span style="width:136px; font-weight:700; color:#1a1a1a; font-size:11px;">World Cup</span>
+    <div style="position:relative; width:360px; height:22px; background:#f0f0f0; border-radius:4px;">
+      <div style="position:absolute; left:52.6%; width:23.7%; height:100%; background:#0e8a3e; border-radius:4px 0 0 4px; display:flex; align-items:center; justify-content:center;">
+        <span style="color:#fff; font-size:9px; font-weight:600;">Groups 21–29</span>
+      </div>
+      <div style="position:absolute; left:76.3%; width:7.9%; height:100%; background:#14b852; border-radius:0 4px 4px 0; display:flex; align-items:center; justify-content:center;">
+        <span style="color:#fff; font-size:8px; font-weight:600;">KO</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Last Man Standing -->
+  <div style="display:flex; align-items:center; margin-bottom:6px;">
+    <span style="width:136px; font-weight:700; color:#1a1a1a; font-size:11px;">Last Man Standing</span>
+    <div style="position:relative; width:360px; height:22px; background:#f0f0f0; border-radius:4px;">
+      <div style="position:absolute; left:0%; width:76.3%; height:100%; background:#c0392b; border-radius:4px; display:flex; align-items:center; justify-content:center;">
+        <span style="color:#fff; font-size:9px; font-weight:600;">GW1–29</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FA Cup -->
+  <div style="display:flex; align-items:center; margin-bottom:6px;">
+    <span style="width:136px; font-weight:700; color:#1a1a1a; font-size:11px;">FA Cup (FPL Cup)</span>
+    <div style="position:relative; width:360px; height:22px; background:#f0f0f0; border-radius:4px;">
+      <div style="position:absolute; left:86.8%; width:13.2%; height:100%; background:#e67e22; border-radius:4px; display:flex; align-items:center; justify-content:center;">
+        <span style="color:#fff; font-size:9px; font-weight:600;">34–38</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Highest GW -->
+  <div style="display:flex; align-items:center; margin-bottom:6px;">
+    <span style="width:136px; font-weight:700; color:#1a1a1a; font-size:11px;">Highest GW Score</span>
+    <div style="position:relative; width:360px; height:22px; background:#f0f0f0; border-radius:4px;">
+      <div style="position:absolute; left:0%; width:100%; height:100%; background:linear-gradient(to right, #8e44ad, #a569bd); border-radius:4px; display:flex; align-items:center; justify-content:center;">
+        <span style="color:#fff; font-size:9px; font-weight:600;">Season-wide (best single GW)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-line">Every manager has a live competition from GW1 to GW38.</div>
+
+<div class="page-footer">
+  <span>Victory Vault · Season 3 · 2026–27</span>
+</div>
+
+</body>
+</html>
