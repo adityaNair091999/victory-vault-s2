@@ -3260,3 +3260,10 @@ body { background-image: none; }   /* drop legacy green/gold glows on true black
     border: 0;
     background: #fff;
 }
+
+/* Champions League weekly fixtures — once a GW is decided, colour the
+   winning manager green and the losing manager red (draws stay neutral). */
+.gw-fixtures .cup-team.winner .cup-manager-name { color: var(--green-light); }
+.gw-fixtures .cup-team.loser .cup-manager-name { color: var(--red-light); opacity: 1; }
+.gw-fixtures .cup-team.winner { background: linear-gradient(90deg, rgba(16, 185, 129, 0.12) 0%, transparent 100%); }
+.gw-fixtures .cup-team.loser { background: linear-gradient(90deg, rgba(239, 68, 68, 0.10) 0%, transparent 100%); }

@@ -427,6 +427,10 @@ const COMPETITIONS = (() => {
                 e1p = eventTotalByEntry[m.entry_1_entry] ?? 0;
                 e2p = eventTotalByEntry[m.entry_2_entry] ?? 0;
                 winner = e1p > e2p ? m.entry_1_entry : e2p > e1p ? m.entry_2_entry : null;
+            } else if (!winner && e1p != null && e2p != null && e1p !== e2p) {
+                // Finished GW but FPL hasn't stamped the H2H winner yet —
+                // derive it from the match points (higher score wins).
+                winner = e1p > e2p ? m.entry_1_entry : m.entry_2_entry;
             }
             (byGW[m.event] = byGW[m.event] || []).push({
                 event: m.event,
